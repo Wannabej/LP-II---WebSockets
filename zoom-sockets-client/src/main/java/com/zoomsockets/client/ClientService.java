@@ -1,0 +1,209 @@
+package com.zoomsockets.client;
+
+import com.zoomsockets.protocol.ControlHeader;
+import com.zoomsockets.protocol.NetworkFrame;
+import com.zoomsockets.protocol.ProtocolStreamer;
+import javax.swing.SwingUtilities;
+import java.io.*;
+import java.net.Socket;
+
+public class ClientService {
+    private static ClientService instance;
+    
+    private Socket socket;
+    private DataInputStream in;
+    private DataOutputStream out;
+    private Thread readThread;
+    private boolean connected = false;
+    private ClientListener listener;
+
+    private ClientService() {}
+
+    public static synchronized ClientService getInstance() {
+        if (instance == null) {
+            instance = new ClientService();
+        }
+        return instance;
+    }
+
+    public synchronized void connect(String host, int port) throws IOException {
+        if (connected) return;
+
+        this.socket = new Socket(host, port);
+        this.in = new DataInputStream(socket.getInputStream());
+        this.out = new DataOutputStream(socket.getOutputStream());
+        this.connected = true;
+
+        // Iniciar hilo de escucha de red
+        this.readThread = new Thread(this::listen, "ZoomSockets-ReadThread");
+        this.readThread.setDaemon(true);
+        this.readThread.start();
+        System.out.println("Conectado al servidor: " + host + ":" + port);
+    }
+
+    public synchronized void disconnect() {
+        if (!connected) return;
+        connected = false;
+
+        try {
+            if (in != null) in.close();
+        } catch (IOException e) { /* ignore */ }
+        
+        try {
+            if (out != null) out.close();
+        } catch (IOException e) { /* ignore */ }
+        
+        try {
+            if (socket != null && !socket.isClosed()) socket.close();
+        } catch (IOException e) { /* ignore */ }
+
+        System.out.println("Desconectado del servidor.");
+    }
+
+    public synchronized void sendFrame(NetworkFrame frame) {
+        if (!connected) return;
+        try {
+            ProtocolStreamer.writeFrame(out, frame);
+        } catch (IOException e) {
+            System.err.println("Error al enviar trama: " + e.getMessage());
+            disconnect();
+        }
+    }
+
+    public void setListener(ClientListener listener) {
+        this.listener = listener;
+    }
+
+    private void listen() {
+        try {
+            while (connected) {
+                NetworkFrame frame = ProtocolStreamer.readFrame(in);
+                
+                // Despachar el procesamiento en el hilo de UI de Swing
+                SwingUtilities.invokeLater(() -> procesarTramaRecibida(frame));
+            }
+        } catch (IOException e) {
+            if (connected) {
+                System.err.println("Conexión con el servidor perdida: " + e.getMessage());
+                disconnect();
+                SwingUtilities.invokeLater(() -> {
+                    if (listener != null) listener.onRoomTerminated();
+                });
+            }
+        }
+    }
+
+    private void procesarTramaRecibida(NetworkFrame frame) {
+        if (listener == null) return;
+        
+        try {
+            ControlHeader header = ControlHeader.fromJson(frame.getJsonHeader());
+            String type = header.getType();
+            if (type == null) return;
+
+            switch (type) {
+                case "LOGIN_RESPONSE":
+                    listener.onLoginResponse(
+                        header.getSuccess(),
+                        header.getError(),
+                        header.getNombres(),
+                        header.getRol(),
+                        header.getIdUsuario() != null ? header.getIdUsuario() : 0
+                    );
+                    break;
+                case "CREATE_ROOM_RESPONSE":
+                    listener.onCreateRoomResponse(
+                        header.getSuccess(),
+                        header.getError(),
+                        header.getCodigoSala(),
+                        header.getNombreSala(),
+                        header.getIdSala() != null ? header.getIdSala() : 0
+                    );
+                    break;
+                case "JOIN_ROOM_RESPONSE":
+                    listener.onJoinRoomResponse(
+                        header.getStatus(),
+                        header.getError(),
+                        header.getIdSala() != null ? header.getIdSala() : 0,
+                        header.getNombreSala()
+                    );
+                    break;
+                case "WAITING_ROOM_UPDATE":
+                    listener.onWaitingRoomUpdate(header.getPendingUsers());
+                    break;
+                case "ROOM_MEMBERS_UPDATE":
+                    listener.onRoomMembersUpdate(header.getActiveUsers());
+                    break;
+                case "CHAT_MESSAGE":
+                    listener.onChatMessage(
+                        header.getNombres(),
+                        header.getContenido(),
+                        header.getIdUsuario()
+                    );
+                    break;
+                case "FILE_SHARED":
+                    listener.onFileShared(
+                        header.getNombres(),
+                        header.getNombreArchivo(),
+                        header.getContenido() // Contiene el nombre único físico guardado en el servidor
+                    );
+                    break;
+                case "CAMERA_FRAME":
+                    listener.onCameraFrame(
+                        header.getIdUsuario(),
+                        header.getNombres(),
+                        frame.getBinaryPayload()
+                    );
+                    break;
+                case "ROOM_TERMINATED":
+                    listener.onRoomTerminated();
+                    break;
+            }
+        } catch (Exception e) {
+            System.err.println("Error procesando trama en cliente: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Envía un archivo local dividiéndolo en fragmentos (chunks) sobre el socket.
+     */
+    public void sendFile(int idSala, int idUsuario, File file) {
+        new Thread(() -> {
+            try {
+                long fileSize = file.length();
+                String fileName = file.getName();
+
+                // 1. Enviar trama FILE_START con metadatos
+                ControlHeader startHeader = new ControlHeader("FILE_START");
+                startHeader.setIdSala(idSala);
+                startHeader.setIdUsuario(idUsuario);
+                startHeader.setNombreArchivo(fileName);
+                startHeader.setTamanoArchivo(fileSize);
+                sendFrame(new NetworkFrame(startHeader.toJson()));
+
+                // 2. Leer archivo y enviar en fragmentos de 8 KB
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                try (FileInputStream fis = new FileInputStream(file)) {
+                    while ((bytesRead = fis.read(buffer)) != -1) {
+                        byte[] chunk = new byte[bytesRead];
+                        System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+
+                        ControlHeader chunkHeader = new ControlHeader("FILE_CHUNK");
+                        chunkHeader.setChunkIndex(0); // Opcional, para control
+                        
+                        sendFrame(new NetworkFrame(chunkHeader.toJson(), chunk));
+                    }
+                }
+
+                // 3. Enviar trama FILE_END
+                ControlHeader endHeader = new ControlHeader("FILE_END");
+                sendFrame(new NetworkFrame(endHeader.toJson()));
+                
+                System.out.println("Archivo enviado completamente por partes: " + fileName);
+            } catch (Exception e) {
+                System.err.println("Error al enviar archivo fragmentado: " + e.getMessage());
+            }
+        }, "FileSenderThread").start();
+    }
+}
