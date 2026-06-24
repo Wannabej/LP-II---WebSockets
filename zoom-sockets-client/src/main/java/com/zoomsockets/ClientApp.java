@@ -7,7 +7,12 @@ import com.zoomsockets.model.SolicitudSala;
 import com.zoomsockets.model.Usuario;
 import com.zoomsockets.protocol.ControlHeader;
 import com.zoomsockets.protocol.NetworkFrame;
+import com.github.sarxos.webcam.Webcam;
+import com.github.sarxos.webcam.WebcamResolution;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
+import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
+import javax.imageio.stream.MemoryCacheImageOutputStream;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -75,6 +80,7 @@ public class ClientApp extends JFrame implements ClientListener {
     // Hilos de la cámara simulada local
     private Thread cameraThread;
     private boolean isCameraOn = false;
+    private Webcam selectedWebcam = null; // Cámara real seleccionada (null = usar simulación)
 
     public ClientApp() {
         super("Zoom-Sockets - Prototipo Académico");
@@ -128,14 +134,15 @@ public class ClientApp extends JFrame implements ClientListener {
     // ==========================================
     private JPanel buildLoginPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(new Color(20, 21, 24));
         panel.setBorder(new EmptyBorder(30, 30, 30, 30));
 
         JPanel formCard = new JPanel(new GridBagLayout());
         formCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(60, 63, 65), 1, true),
+                BorderFactory.createLineBorder(new Color(50, 52, 58), 1, true),
                 new EmptyBorder(25, 25, 25, 25)
         ));
-        formCard.setBackground(new Color(43, 43, 43));
+        formCard.setBackground(new Color(32, 33, 37));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(8, 8, 8, 8);
@@ -144,7 +151,7 @@ public class ClientApp extends JFrame implements ClientListener {
         // Título de la tarjeta
         JLabel lblTitle = new JLabel("Iniciar Sesión", JLabel.CENTER);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        lblTitle.setForeground(new Color(200, 200, 200));
+        lblTitle.setForeground(new Color(240, 240, 240));
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
         formCard.add(lblTitle, gbc);
 
@@ -160,24 +167,32 @@ public class ClientApp extends JFrame implements ClientListener {
         gbc.gridx = 0; gbc.gridy = 2;
         formCard.add(new JLabel("Servidor IP:"), gbc);
         txtIp = new JTextField("localhost", 12);
+        txtIp.putClientProperty("JTextField.placeholderText", "IP del Servidor");
+        txtIp.putClientProperty("JTextField.showClearButton", true);
         gbc.gridx = 1;
         formCard.add(txtIp, gbc);
 
         gbc.gridx = 0; gbc.gridy = 3;
         formCard.add(new JLabel("Puerto:"), gbc);
         txtPort = new JTextField("8080", 12);
+        txtPort.putClientProperty("JTextField.placeholderText", "Puerto");
+        txtPort.putClientProperty("JTextField.showClearButton", true);
         gbc.gridx = 1;
         formCard.add(txtPort, gbc);
 
         gbc.gridx = 0; gbc.gridy = 4;
         formCard.add(new JLabel("Correo:"), gbc);
         txtCorreo = new JTextField("host@zoom.com", 12); // Semilla por defecto
+        txtCorreo.putClientProperty("JTextField.placeholderText", "correo@ejemplo.com");
+        txtCorreo.putClientProperty("JTextField.showClearButton", true);
         gbc.gridx = 1;
         formCard.add(txtCorreo, gbc);
 
         gbc.gridx = 0; gbc.gridy = 5;
         formCard.add(new JLabel("Contraseña:"), gbc);
         txtPassword = new JPasswordField("password123", 12);
+        txtPassword.putClientProperty("JTextField.placeholderText", "Contraseña");
+        txtPassword.putClientProperty("JTextField.showClearButton", true);
         gbc.gridx = 1;
         formCard.add(txtPassword, gbc);
 
@@ -186,6 +201,7 @@ public class ClientApp extends JFrame implements ClientListener {
         btnLogin.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnLogin.setBackground(new Color(30, 144, 255));
         btnLogin.setForeground(Color.WHITE);
+        btnLogin.putClientProperty("JButton.buttonType", "roundRect");
         btnLogin.addActionListener(e -> performLogin());
         gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
         gbc.insets = new Insets(20, 8, 8, 8);
@@ -243,14 +259,15 @@ public class ClientApp extends JFrame implements ClientListener {
     // ==========================================
     private JPanel buildWelcomePanel() {
         JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(new Color(20, 21, 24));
         panel.setBorder(new EmptyBorder(30, 30, 30, 30));
 
         JPanel formCard = new JPanel(new GridBagLayout());
         formCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(60, 63, 65), 1, true),
+                BorderFactory.createLineBorder(new Color(50, 52, 58), 1, true),
                 new EmptyBorder(25, 25, 25, 25)
         ));
-        formCard.setBackground(new Color(43, 43, 43));
+        formCard.setBackground(new Color(32, 33, 37));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
@@ -267,16 +284,19 @@ public class ClientApp extends JFrame implements ClientListener {
         formCard.add(sep, gbc);
 
         // Sección Crear Sala (Lado Izquierdo)
-        JPanel panelCrear = new JPanel(new BorderLayout(5, 5));
+        JPanel panelCrear = new JPanel(new BorderLayout(8, 8));
         panelCrear.setOpaque(false);
-        panelCrear.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.GRAY), "Anfitrión: Crear Sala"));
+        panelCrear.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(65, 68, 75)), "Anfitrión: Crear Sala"));
         
         txtCrearNombreSala = new JTextField("Sala de Redes y Concurrencia", 15);
+        txtCrearNombreSala.putClientProperty("JTextField.placeholderText", "Nombre de la sala");
+        txtCrearNombreSala.putClientProperty("JTextField.showClearButton", true);
         panelCrear.add(txtCrearNombreSala, BorderLayout.CENTER);
         
         btnCrearSala = new JButton("Iniciar Sala");
         btnCrearSala.setBackground(new Color(46, 139, 87));
         btnCrearSala.setForeground(Color.WHITE);
+        btnCrearSala.putClientProperty("JButton.buttonType", "roundRect");
         btnCrearSala.addActionListener(e -> {
             String nombre = txtCrearNombreSala.getText().trim();
             if (nombre.isEmpty()) return;
@@ -292,17 +312,20 @@ public class ClientApp extends JFrame implements ClientListener {
         formCard.add(panelCrear, gbc);
 
         // Sección Unirse a Sala (Lado Derecho)
-        JPanel panelUnirse = new JPanel(new BorderLayout(5, 5));
+        JPanel panelUnirse = new JPanel(new BorderLayout(8, 8));
         panelUnirse.setOpaque(false);
-        panelUnirse.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.GRAY), "Participante: Unirse"));
+        panelUnirse.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(65, 68, 75)), "Participante: Unirse"));
         
         txtUnirseCodigoSala = new JTextField("", 15);
+        txtUnirseCodigoSala.putClientProperty("JTextField.placeholderText", "Código de Sala");
+        txtUnirseCodigoSala.putClientProperty("JTextField.showClearButton", true);
         txtUnirseCodigoSala.setToolTipText("Introduce el código de 8 caracteres");
         panelUnirse.add(txtUnirseCodigoSala, BorderLayout.CENTER);
         
         btnUnirseSala = new JButton("Unirse a la Reunión");
         btnUnirseSala.setBackground(new Color(30, 144, 255));
         btnUnirseSala.setForeground(Color.WHITE);
+        btnUnirseSala.putClientProperty("JButton.buttonType", "roundRect");
         btnUnirseSala.addActionListener(e -> {
             String codigo = txtUnirseCodigoSala.getText().trim().toUpperCase();
             if (codigo.isEmpty()) return;
@@ -321,6 +344,7 @@ public class ClientApp extends JFrame implements ClientListener {
 
         // Botón de Cerrar Sesión
         JButton btnLogout = new JButton("Cerrar Sesión");
+        btnLogout.putClientProperty("JButton.buttonType", "roundRect");
         btnLogout.addActionListener(e -> {
             ClientService.getInstance().disconnect();
             cardLayout.show(mainContainer, "LOGIN");
@@ -408,8 +432,11 @@ public class ClientApp extends JFrame implements ClientListener {
         JPanel panelChatInput = new JPanel(new BorderLayout(5, 5));
         panelChatInput.setBorder(new EmptyBorder(8, 8, 8, 8));
         txtChatMessage = new JTextField();
+        txtChatMessage.putClientProperty("JTextField.placeholderText", "Escribe un mensaje aquí...");
+        txtChatMessage.putClientProperty("JTextField.showClearButton", true);
         txtChatMessage.addActionListener(e -> sendChatMessage());
         btnSendChat = new JButton("Enviar");
+        btnSendChat.putClientProperty("JButton.buttonType", "roundRect");
         btnSendChat.addActionListener(e -> sendChatMessage());
         panelChatInput.add(txtChatMessage, BorderLayout.CENTER);
         panelChatInput.add(btnSendChat, BorderLayout.EAST);
@@ -433,9 +460,11 @@ public class ClientApp extends JFrame implements ClientListener {
         btnShareFile = new JButton("Compartir Documento");
         btnShareFile.setBackground(new Color(46, 139, 87));
         btnShareFile.setForeground(Color.WHITE);
+        btnShareFile.putClientProperty("JButton.buttonType", "roundRect");
         btnShareFile.addActionListener(e -> performShareFile());
         
         JButton btnDownloadFile = new JButton("Descargar Archivo Seleccionado");
+        btnDownloadFile.putClientProperty("JButton.buttonType", "roundRect");
         btnDownloadFile.addActionListener(e -> performDownloadFile());
 
         panelFilesButtons.add(btnShareFile);
@@ -449,7 +478,7 @@ public class ClientApp extends JFrame implements ClientListener {
         // C3. Sub-panel: SALA DE ESPERA (Solo visible para Host)
         panelWaitingRoom = new JPanel(new BorderLayout());
         panelWaitingRoom.setPreferredSize(new Dimension(320, 160));
-        panelWaitingRoom.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.GRAY), "Sala de Espera (Invitados Pendientes)"));
+        panelWaitingRoom.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(65, 68, 75)), "Sala de Espera (Invitados Pendientes)"));
         panelWaitingRoom.setVisible(false); // Por defecto oculto, se activa si soy Host
 
         modelWaitingList = new DefaultListModel<>();
@@ -464,11 +493,13 @@ public class ClientApp extends JFrame implements ClientListener {
         JButton btnAcceptUser = new JButton("Admitir");
         btnAcceptUser.setBackground(new Color(46, 139, 87));
         btnAcceptUser.setForeground(Color.WHITE);
+        btnAcceptUser.putClientProperty("JButton.buttonType", "roundRect");
         btnAcceptUser.addActionListener(e -> respondWaitingRequest("ACCEPT"));
 
         JButton btnRejectUser = new JButton("Rechazar");
         btnRejectUser.setBackground(new Color(178, 34, 34));
         btnRejectUser.setForeground(Color.WHITE);
+        btnRejectUser.putClientProperty("JButton.buttonType", "roundRect");
         btnRejectUser.addActionListener(e -> respondWaitingRequest("REJECT"));
 
         panelWaitingButtons.add(btnAcceptUser);
@@ -486,11 +517,13 @@ public class ClientApp extends JFrame implements ClientListener {
         btnToggleCam = new JButton("Iniciar Cámara");
         btnToggleCam.setIcon(UIManager.getIcon("FileView.computerIcon"));
         btnToggleCam.setBackground(new Color(70, 70, 70));
+        btnToggleCam.putClientProperty("JButton.buttonType", "roundRect");
         btnToggleCam.addActionListener(e -> toggleCamera());
 
         btnLeave = new JButton("Abandonar");
         btnLeave.setBackground(new Color(178, 34, 34));
         btnLeave.setForeground(Color.WHITE);
+        btnLeave.putClientProperty("JButton.buttonType", "roundRect");
         btnLeave.addActionListener(e -> handleExit());
 
         panelControls.add(btnToggleCam);
@@ -594,6 +627,51 @@ public class ClientApp extends JFrame implements ClientListener {
     // ==========================================
     private void toggleCamera() {
         if (!isCameraOn) {
+            // Solicitar permiso de acceso a la cámara local
+            int opt = JOptionPane.showConfirmDialog(
+                this,
+                "¿Desea permitir que la aplicación acceda a su cámara local?",
+                "Permiso de Cámara",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (opt == JOptionPane.YES_OPTION) {
+                // Detectar cámaras disponibles
+                List<Webcam> webcams = Webcam.getWebcams();
+
+                if (webcams.isEmpty()) {
+                    // Sin hardware: avisar y usar simulación como fallback
+                    JOptionPane.showMessageDialog(this,
+                        "No se detectó ninguna cámara de hardware.\nSe usará la simulación de video.",
+                        "Sin cámara", JOptionPane.WARNING_MESSAGE);
+                    selectedWebcam = null;
+                } else if (webcams.size() == 1) {
+                    // Una sola cámara: usarla directamente
+                    selectedWebcam = webcams.get(0);
+                } else {
+                    // Múltiples cámaras: mostrar diálogo de selección
+                    String[] nombres = webcams.stream()
+                        .map(Webcam::getName)
+                        .toArray(String[]::new);
+                    String elegida = (String) JOptionPane.showInputDialog(
+                        this,
+                        "Selecciona la cámara a usar:",
+                        "Selección de Cámara",
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        nombres,
+                        nombres[0]);
+                    if (elegida == null) return; // El usuario canceló
+                    selectedWebcam = webcams.stream()
+                        .filter(w -> w.getName().equals(elegida))
+                        .findFirst().orElse(webcams.get(0));
+                }
+            } else {
+                // Permiso denegado: usar simulación directamente
+                selectedWebcam = null;
+            }
+
             isCameraOn = true;
             btnToggleCam.setText("Detener Cámara");
             btnToggleCam.setBackground(new Color(178, 34, 34));
@@ -601,13 +679,17 @@ public class ClientApp extends JFrame implements ClientListener {
             // Agregar nuestro propio panel de video local en la grid
             addOrUpdateParticipantVideo(myUserId, myName, null);
 
-            // Iniciar hilo de renderizado y transmisión
-            cameraThread = new Thread(this::runSimulatedCamera, "SimulatedCamera-Thread");
+            // Iniciar hilo de captura real o simulación
+            if (selectedWebcam != null) {
+                cameraThread = new Thread(this::runRealCamera, "RealCamera-Thread");
+            } else {
+                cameraThread = new Thread(this::runSimulatedCamera, "SimulatedCamera-Thread");
+            }
             cameraThread.setDaemon(true);
             cameraThread.start();
         } else {
             stopCameraLocal();
-            
+
             // Enviar frame vacío para notificar a los demás que apagamos cámara
             ControlHeader camHeader = new ControlHeader("CAMERA_FRAME");
             ClientService.getInstance().sendFrame(new NetworkFrame(camHeader.toJson(), new byte[0]));
@@ -618,16 +700,87 @@ public class ClientApp extends JFrame implements ClientListener {
         isCameraOn = false;
         btnToggleCam.setText("Iniciar Cámara");
         btnToggleCam.setBackground(new Color(70, 70, 70));
-        
+
         if (cameraThread != null) {
             cameraThread.interrupt();
             cameraThread = null;
         }
 
+        // Cerrar la webcam real si estaba abierta
+        if (selectedWebcam != null && selectedWebcam.isOpen()) {
+            selectedWebcam.close();
+        }
+        selectedWebcam = null;
+
         // Mostrar avatar por defecto para mí
         ParticipantVideoPanel p = participantPanels.get(myUserId);
         if (p != null) {
             p.showAvatar();
+        }
+    }
+
+    /**
+     * Captura frames de la webcam real, los comprime a JPEG y los envía por socket.
+     * Resolución: 320x240. FPS objetivo: 5 (200ms por frame).
+     */
+    private void runRealCamera() {
+        // Configurar resolución reducida para no saturar la red
+        selectedWebcam.setCustomViewSizes(WebcamResolution.QVGA.getSize()); // 320x240
+        selectedWebcam.setViewSize(WebcamResolution.QVGA.getSize());
+
+        ImageWriter jpegWriter = null;
+        try {
+            if (!selectedWebcam.open()) {
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this,
+                    "No se pudo abrir la cámara seleccionada.\nVerifica que no esté en uso.",
+                    "Error de Cámara", JOptionPane.ERROR_MESSAGE));
+                return;
+            }
+
+            // Preparar compresor JPEG con calidad reducida (0.5) para ahorrar ancho de banda
+            jpegWriter = ImageIO.getImageWritersByFormatName("jpg").next();
+            JPEGImageWriteParam jpegParams = new JPEGImageWriteParam(null);
+            jpegParams.setCompressionMode(JPEGImageWriteParam.MODE_EXPLICIT);
+            jpegParams.setCompressionQuality(0.5f);
+
+            while (isCameraOn && !Thread.currentThread().isInterrupted()) {
+                BufferedImage img = selectedWebcam.getImage();
+                if (img == null) {
+                    Thread.sleep(200);
+                    continue;
+                }
+
+                // Comprimir a JPEG con calidad controlada
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                try (MemoryCacheImageOutputStream mcios = new MemoryCacheImageOutputStream(baos)) {
+                    jpegWriter.setOutput(mcios);
+                    jpegWriter.write(null, new javax.imageio.IIOImage(img, null, null), jpegParams);
+                }
+                byte[] jpegBytes = baos.toByteArray();
+
+                // Actualizar panel local en la UI
+                SwingUtilities.invokeLater(() -> {
+                    ParticipantVideoPanel p = participantPanels.get(myUserId);
+                    if (p != null) p.updateFrame(jpegBytes);
+                });
+
+                // Enviar por socket a los demás participantes
+                ControlHeader frameHeader = new ControlHeader("CAMERA_FRAME");
+                ClientService.getInstance().sendFrame(new NetworkFrame(frameHeader.toJson(), jpegBytes));
+
+                Thread.sleep(200); // 5 FPS
+            }
+        } catch (InterruptedException e) {
+            // Detención del hilo normal
+        } catch (IOException e) {
+            System.err.println("Error al capturar/enviar frame de cámara real: " + e.getMessage());
+        } finally {
+            if (jpegWriter != null) {
+                jpegWriter.dispose();
+            }
+            if (selectedWebcam != null && selectedWebcam.isOpen()) {
+                selectedWebcam.close();
+            }
         }
     }
 
