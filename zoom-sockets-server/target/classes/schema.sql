@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS SolicitudesSala (
 );
 
 -- Insertar datos semilla (Contraseña por defecto para todos: "password123", hash generado con BCrypt)
--- Hash: $2a$10$tMh4zHl39Vd1vB7dO/wzquPkyTj1Wc5V1rF14qA2l/jN1T9gEqvjS
+-- Hash: $2a$10$s0VxRBoqgRtosXzHnss0N.WGZ370HMdeoJcA2KgbfH3qo0YosxdGC
 INSERT OR IGNORE INTO Usuarios (Nombres, Correo, PasswordHash, Rol, Activo) VALUES
-('Host Demo', 'host@zoom.com', '$2a$10$tMh4zHl39Vd1vB7dO/wzquPkyTj1Wc5V1rF14qA2l/jN1T9gEqvjS', 'Docente', 1),
-('Invitado Juan', 'juan@zoom.com', '$2a$10$tMh4zHl39Vd1vB7dO/wzquPkyTj1Wc5V1rF14qA2l/jN1T9gEqvjS', 'Estudiante', 1),
-('Invitada Maria', 'maria@zoom.com', '$2a$10$tMh4zHl39Vd1vB7dO/wzquPkyTj1Wc5V1rF14qA2l/jN1T9gEqvjS', 'Estudiante', 1);
+('Host Demo', 'host@zoom.com', '$2a$10$s0VxRBoqgRtosXzHnss0N.WGZ370HMdeoJcA2KgbfH3qo0YosxdGC', 'Docente', 1),
+('Invitado Juan', 'juan@zoom.com', '$2a$10$s0VxRBoqgRtosXzHnss0N.WGZ370HMdeoJcA2KgbfH3qo0YosxdGC', 'Estudiante', 1),
+('Invitada Maria', 'maria@zoom.com', '$2a$10$s0VxRBoqgRtosXzHnss0N.WGZ370HMdeoJcA2KgbfH3qo0YosxdGC', 'Estudiante', 1);
