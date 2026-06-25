@@ -1,0 +1,31 @@
+# Java/Maven
+target/
+**/target/
+*.class
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+out/
+gen/
+
+# IDE - Eclipse
+.metadata/
+.classpath
+.project
+.settings/
+.factorypath
+
+# IDE - VS Code
+.vscode/
+
+# Database files
+*.db
+zoom_sockets.db
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Temporary uploads / data
+uploads/
