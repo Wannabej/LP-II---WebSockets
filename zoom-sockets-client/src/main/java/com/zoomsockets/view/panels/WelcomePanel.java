@@ -8,7 +8,6 @@ import java.awt.*;
 
 public class WelcomePanel extends JPanel {
 
-    private MainController controller;
     private JLabel lblWelcomeMsg;
     private JTextField txtCrearNombreSala, txtUnirseCodigoSala;
     private JButton btnCrearSala, btnUnirseSala;
@@ -17,7 +16,6 @@ public class WelcomePanel extends JPanel {
     private Timer spinnerTimer;
 
     public WelcomePanel(MainController controller) {
-        this.controller = controller;
         setLayout(new GridBagLayout());
         setBackground(new Color(20, 21, 24));
         setBorder(new EmptyBorder(30, 30, 30, 30));

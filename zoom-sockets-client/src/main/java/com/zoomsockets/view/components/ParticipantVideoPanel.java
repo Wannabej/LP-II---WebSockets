@@ -7,13 +7,11 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 
 public class ParticipantVideoPanel extends JPanel {
-    private final String userName;
     private final JLabel labelName;
     private final JLabel labelVideo;
     private final JPanel panelAvatar;
 
     public ParticipantVideoPanel(String userName) {
-        this.userName = userName;
         this.setLayout(new BorderLayout());
         this.setBackground(new Color(30, 32, 40));
         this.setBorder(BorderFactory.createLineBorder(new Color(60, 63, 65), 2, true));
