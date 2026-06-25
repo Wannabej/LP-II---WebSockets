@@ -69,6 +69,10 @@ public class ClientApp extends JFrame implements ClientListener {
     private JList<String> listWaitingUsers;
     private Map<Integer, SolicitudSala> pendingMap = new HashMap<>();
 
+    // Ventana dedicada de sala de espera (participante en espera de admisión)
+    private JDialog waitingRoomDialog;
+    private javax.swing.Timer spinnerTimer;
+
     // Descargas
     private DefaultListModel<String> modelFilesList;
     private JList<String> listSharedFiles;
@@ -565,6 +569,118 @@ public class ClientApp extends JFrame implements ClientListener {
         }
     }
 
+    // ==========================================
+    // SALA DE ESPERA — Ventana Dedicada para Participante
+    // ==========================================
+    private void showWaitingRoomDialog(String roomName) {
+        if (waitingRoomDialog != null && waitingRoomDialog.isVisible()) {
+            waitingRoomDialog.dispose();
+        }
+
+        waitingRoomDialog = new JDialog(this, "Sala de Espera", false);
+        waitingRoomDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        waitingRoomDialog.setSize(440, 360);
+        waitingRoomDialog.setLocationRelativeTo(this);
+        waitingRoomDialog.setResizable(false);
+
+        JPanel content = new JPanel(new GridBagLayout());
+        content.setBackground(new Color(20, 21, 24));
+        content.setBorder(new EmptyBorder(30, 40, 30, 40));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(8, 0, 8, 0);
+
+        // Ícono
+        JLabel lblIcon = new JLabel("\u23F3", JLabel.CENTER);
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 48));
+        gbc.gridy = 0;
+        content.add(lblIcon, gbc);
+
+        // Título
+        JLabel lblTitle = new JLabel("Sala de Espera", JLabel.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        lblTitle.setForeground(new Color(30, 144, 255));
+        gbc.gridy = 1;
+        content.add(lblTitle, gbc);
+
+        // Nombre de la sala
+        JLabel lblSalaName = new JLabel(roomName, JLabel.CENTER);
+        lblSalaName.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        lblSalaName.setForeground(new Color(150, 150, 150));
+        gbc.gridy = 2;
+        content.add(lblSalaName, gbc);
+
+        // Separador
+        JSeparator sep = new JSeparator();
+        gbc.gridy = 3;
+        gbc.insets = new Insets(5, 0, 15, 0);
+        content.add(sep, gbc);
+        gbc.insets = new Insets(8, 0, 8, 0);
+
+        // Mensaje
+        JLabel lblMsg = new JLabel(
+            "<html><div style='text-align:center;'>Aguarda mientras el anfitrión<br>" +
+            "revisa tu solicitud de ingreso.</div></html>", JLabel.CENTER);
+        lblMsg.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblMsg.setForeground(new Color(200, 200, 200));
+        gbc.gridy = 4;
+        content.add(lblMsg, gbc);
+
+        // Spinner animado
+        String[] spinnerFrames = { "|", "/", "\u2014", "\\" };
+        JLabel lblSpinner = new JLabel(spinnerFrames[0] + "  Esperando respuesta del host...", JLabel.CENTER);
+        lblSpinner.setFont(new Font("Monospaced", Font.BOLD, 13));
+        lblSpinner.setForeground(new Color(30, 144, 255));
+        gbc.gridy = 5;
+        content.add(lblSpinner, gbc);
+
+        // Timer para animar el spinner en el EDT
+        int[] frameIdx = { 0 };
+        if (spinnerTimer != null) spinnerTimer.stop();
+        spinnerTimer = new javax.swing.Timer(150, e -> {
+            frameIdx[0] = (frameIdx[0] + 1) % spinnerFrames.length;
+            lblSpinner.setText(spinnerFrames[frameIdx[0]] + "  Esperando respuesta del host...");
+        });
+        spinnerTimer.start();
+
+        // Botón cancelar
+        JButton btnCancel = new JButton("Cancelar solicitud");
+        btnCancel.setBackground(new Color(178, 34, 34));
+        btnCancel.setForeground(Color.WHITE);
+        btnCancel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnCancel.putClientProperty("JButton.buttonType", "roundRect");
+        btnCancel.addActionListener(e -> {
+            // Notificar al servidor que abandona la sala de espera
+            ControlHeader leaveHeader = new ControlHeader("LEAVE_ROOM");
+            ClientService.getInstance().sendFrame(new NetworkFrame(leaveHeader.toJson()));
+            closeWaitingRoomDialog();
+            // Restaurar botón en panel de bienvenida
+            SwingUtilities.invokeLater(() -> {
+                btnUnirseSala.setEnabled(true);
+                btnUnirseSala.setText("Unirse a la Reunión");
+            });
+        });
+        gbc.gridy = 6;
+        gbc.insets = new Insets(20, 0, 0, 0);
+        content.add(btnCancel, gbc);
+
+        waitingRoomDialog.setContentPane(content);
+        waitingRoomDialog.setVisible(true);
+    }
+
+    private void closeWaitingRoomDialog() {
+        if (spinnerTimer != null) {
+            spinnerTimer.stop();
+            spinnerTimer = null;
+        }
+        if (waitingRoomDialog != null) {
+            waitingRoomDialog.dispose();
+            waitingRoomDialog = null;
+        }
+    }
+
     private void performShareFile() {
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Selecciona un documento para compartir");
@@ -950,16 +1066,17 @@ public class ClientApp extends JFrame implements ClientListener {
 
     @Override
     public void onJoinRoomResponse(String status, String error, int idSala, String nombreSala) {
-        btnUnirseSala.setEnabled(true);
-        btnUnirseSala.setText("Unirse a la Reunión");
-
         if ("PENDING".equalsIgnoreCase(status)) {
-            // El usuario ingresó a sala de espera
-            JOptionPane.showMessageDialog(this, 
-                "Has ingresado a la sala de espera.\nPor favor, aguarda a que el anfitrión autorice tu ingreso.", 
-                "Sala de Espera", JOptionPane.INFORMATION_MESSAGE);
+            // Mantener botón deshabilitado mientras se espera; mostrar ventana dedicada
+            // (el botón se rehabilita cuando se cierra el dialog por cancelación, admisión o rechazo)
+            showWaitingRoomDialog(nombreSala != null ? nombreSala : txtUnirseCodigoSala.getText().trim().toUpperCase());
         } else if ("SUCCESS".equalsIgnoreCase(status)) {
-            // Admitido activamente
+            // Cerrar la ventana de espera (si sigue abierta) antes de entrar a la sala
+            closeWaitingRoomDialog();
+
+            btnUnirseSala.setEnabled(true);
+            btnUnirseSala.setText("Unirse a la Reunión");
+
             activeRoomId = idSala;
             activeRoomCode = txtUnirseCodigoSala.getText().trim().toUpperCase();
             activeRoomName = nombreSala;
@@ -982,12 +1099,18 @@ public class ClientApp extends JFrame implements ClientListener {
             cardLayout.show(mainContainer, "ROOM");
             System.out.println("Ingresado a la sala en rol Participante. Código: " + activeRoomCode);
         } else if ("REJECTED".equalsIgnoreCase(status)) {
-            JOptionPane.showMessageDialog(this, 
-                "Solicitud rechazada: " + error, 
+            closeWaitingRoomDialog();
+            btnUnirseSala.setEnabled(true);
+            btnUnirseSala.setText("Unirse a la Reunión");
+            JOptionPane.showMessageDialog(this,
+                "Solicitud rechazada: " + error,
                 "Acceso Denegado", JOptionPane.WARNING_MESSAGE);
         } else {
-            JOptionPane.showMessageDialog(this, 
-                "No se pudo unir a la sala: " + error, 
+            closeWaitingRoomDialog();
+            btnUnirseSala.setEnabled(true);
+            btnUnirseSala.setText("Unirse a la Reunión");
+            JOptionPane.showMessageDialog(this,
+                "No se pudo unir a la sala: " + error,
                 "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -1061,15 +1184,21 @@ public class ClientApp extends JFrame implements ClientListener {
 
     @Override
     public void onRoomTerminated() {
+        // Cerrar ventana de sala de espera si estaba pendiente
+        closeWaitingRoomDialog();
         stopCameraLocal();
         activeRoomId = 0;
         activeRoomCode = null;
         activeRoomName = null;
-        
-        JOptionPane.showMessageDialog(this, 
-            "La reunión ha finalizado o la conexión con el servidor se ha cerrado.", 
+
+        // Restaurar botón por si el participante aún estaba en espera
+        btnUnirseSala.setEnabled(true);
+        btnUnirseSala.setText("Unirse a la Reunión");
+
+        JOptionPane.showMessageDialog(this,
+            "La reunión ha finalizado o la conexión con el servidor se ha cerrado.",
             "Reunión Finalizada", JOptionPane.INFORMATION_MESSAGE);
-        
+
         cardLayout.show(mainContainer, "WELCOME");
     }
 
