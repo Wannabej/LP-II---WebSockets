@@ -1,6 +1,7 @@
 package com.zoomsockets.view.panels;
 
 import com.zoomsockets.controller.MainController;
+import com.zoomsockets.model.ClientSession;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -120,7 +121,7 @@ public class RegisterPanel extends JPanel {
         btnBack.addActionListener(e -> {
             clearForm();
             // Desconectarse por si hubo algun intento de conexion
-            controller.getSession().clearSession();
+            ClientSession.getInstance().limpiarSesion();
             controller.logout(); 
         });
         gbc.gridy = 10; gbc.insets = new Insets(4, 8, 6, 8);

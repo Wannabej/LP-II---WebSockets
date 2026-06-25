@@ -1,12 +1,32 @@
 package com.zoomsockets.model;
 
 public class ClientSession {
+    private static ClientSession instance;
+
     private int myUserId;
     private String myName;
     private String myRole;
     private int activeRoomId;
     private String activeRoomCode;
     private String activeRoomName;
+
+    private ClientSession() {
+        // Constructor privado para Singleton
+    }
+
+    public static synchronized ClientSession getInstance() {
+        if (instance == null) {
+            instance = new ClientSession();
+        }
+        return instance;
+    }
+
+    public void limpiarSesion() {
+        this.myUserId = 0;
+        this.myName = null;
+        this.myRole = null;
+        clearRoom();
+    }
 
     public int getMyUserId() { return myUserId; }
     public void setMyUserId(int myUserId) { this.myUserId = myUserId; }
@@ -30,12 +50,5 @@ public class ClientSession {
         this.activeRoomId = 0;
         this.activeRoomCode = null;
         this.activeRoomName = null;
-    }
-    
-    public void clearSession() {
-        this.myUserId = 0;
-        this.myName = null;
-        this.myRole = null;
-        clearRoom();
     }
 }

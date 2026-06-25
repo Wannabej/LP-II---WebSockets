@@ -231,32 +231,32 @@ public class RoomPanel extends JPanel {
         add(panelControls, BorderLayout.SOUTH);
     }
 
-    public void setupHostRoom(String codigoSala, String nombreSala, ClientSession session) {
+    public void setupHostRoom(String codigoSala, String nombreSala) {
         lblRoomTitle.setText(nombreSala);
         lblRoomCode.setText("CÓDIGO: " + codigoSala);
-        lblMyStatus.setText("Yo: " + session.getMyName() + " (" + session.getMyRole() + ")");
+        lblMyStatus.setText("Yo: " + ClientSession.getInstance().getMyName() + " (" + ClientSession.getInstance().getMyRole() + ")");
 
         panelWaitingRoom.setVisible(true);
         modelWaitingList.clear();
         pendingMap.clear();
 
-        resetRoomUI(session);
+        resetRoomUI();
     }
 
-    public void setupParticipantRoom(String nombreSala, ClientSession session) {
+    public void setupParticipantRoom(String nombreSala) {
         lblRoomTitle.setText(nombreSala);
-        lblRoomCode.setText("CÓDIGO: " + session.getActiveRoomCode());
-        lblMyStatus.setText("Yo: " + session.getMyName() + " (" + session.getMyRole() + ")");
+        lblRoomCode.setText("CÓDIGO: " + ClientSession.getInstance().getActiveRoomCode());
+        lblMyStatus.setText("Yo: " + ClientSession.getInstance().getMyName() + " (" + ClientSession.getInstance().getMyRole() + ")");
 
         panelWaitingRoom.setVisible(false);
 
-        resetRoomUI(session);
+        resetRoomUI();
     }
 
-    private void resetRoomUI(ClientSession session) {
+    private void resetRoomUI() {
         panelVideoGrid.removeAll();
         participantPanels.clear();
-        addOrUpdateParticipantVideo(session.getMyUserId(), session.getMyName(), null);
+        addOrUpdateParticipantVideo(ClientSession.getInstance().getMyUserId(), ClientSession.getInstance().getMyName(), null);
 
         modelFilesList.clear();
         idFilesMap.clear();
@@ -461,8 +461,7 @@ public class RoomPanel extends JPanel {
             btnToggleCam.setText("Detener Cámara");
             btnToggleCam.setBackground(new Color(178, 34, 34));
 
-            ClientSession session = controller.getSession();
-            addOrUpdateParticipantVideo(session.getMyUserId(), session.getMyName(), null);
+            addOrUpdateParticipantVideo(ClientSession.getInstance().getMyUserId(), ClientSession.getInstance().getMyName(), null);
 
             if (selectedWebcam != null) {
                 cameraThread = new Thread(this::runRealCamera, "RealCamera-Thread");
@@ -492,9 +491,8 @@ public class RoomPanel extends JPanel {
         }
         selectedWebcam = null;
 
-        ClientSession session = controller.getSession();
-        if (session != null) {
-            ParticipantVideoPanel p = participantPanels.get(session.getMyUserId());
+        if (ClientSession.getInstance() != null) {
+            ParticipantVideoPanel p = participantPanels.get(ClientSession.getInstance().getMyUserId());
             if (p != null) {
                 p.showAvatar();
             }
@@ -534,7 +532,7 @@ public class RoomPanel extends JPanel {
                 byte[] jpegBytes = baos.toByteArray();
 
                 SwingUtilities.invokeLater(() -> {
-                    ParticipantVideoPanel p = participantPanels.get(controller.getSession().getMyUserId());
+                    ParticipantVideoPanel p = participantPanels.get(ClientSession.getInstance().getMyUserId());
                     if (p != null)
                         p.updateFrame(jpegBytes);
                 });
@@ -596,9 +594,8 @@ public class RoomPanel extends JPanel {
                 g2.setStroke(new BasicStroke(2));
                 g2.drawOval(circleX - radius, circleY - radius, radius * 2, radius * 2);
 
-                ClientSession session = controller.getSession();
-                String myName = session.getMyName() != null ? session.getMyName() : "Unknown";
-                String myRole = session.getMyRole() != null ? session.getMyRole() : "User";
+                String myName = ClientSession.getInstance().getMyName() != null ? ClientSession.getInstance().getMyName() : "Unknown";
+                String myRole = ClientSession.getInstance().getMyRole() != null ? ClientSession.getInstance().getMyRole() : "User";
 
                 g2.setColor(Color.WHITE);
                 g2.setFont(new Font("Monospaced", Font.BOLD, 12));
@@ -621,7 +618,7 @@ public class RoomPanel extends JPanel {
                 byte[] jpegBytes = baos.toByteArray();
 
                 SwingUtilities.invokeLater(() -> {
-                    ParticipantVideoPanel p = participantPanels.get(session.getMyUserId());
+                    ParticipantVideoPanel p = participantPanels.get(ClientSession.getInstance().getMyUserId());
                     if (p != null) {
                         p.updateFrame(jpegBytes);
                     }

@@ -17,10 +17,7 @@ import java.util.List;
 public class MainController implements ClientListener {
 
     private ClientAppFrame frame;
-    private ClientSession session;
-
     public MainController() {
-        this.session = new ClientSession();
         ClientService.getInstance().setListener(this);
     }
 
@@ -29,7 +26,7 @@ public class MainController implements ClientListener {
     }
 
     public ClientSession getSession() {
-        return session;
+        return ClientSession.getInstance();
     }
 
     public ClientAppFrame getFrame() {
@@ -108,13 +105,13 @@ public class MainController implements ClientListener {
 
     public void logout() {
         ClientService.getInstance().disconnect();
-        session.clearSession();
+        ClientSession.getInstance().limpiarSesion();
         frame.showCard("LOGIN");
         frame.getLoginPanel().enableLoginButton();
     }
 
     public void leaveRoom() {
-        if (session.getActiveRoomId() > 0) {
+        if (ClientSession.getInstance().getActiveRoomId() > 0) {
             int confirm = JOptionPane.showConfirmDialog(frame,
                     "¿Estás seguro de que deseas salir de la sala de reunión?",
                     "Confirmar salida", JOptionPane.YES_NO_OPTION);
@@ -127,7 +124,7 @@ public class MainController implements ClientListener {
                 }
 
                 // Do not disconnect entirely, just go back to Welcome
-                session.clearRoom();
+                ClientSession.getInstance().clearRoom();
                 frame.getRoomPanel().stopCameraLocal();
                 frame.showCard("WELCOME");
             }
@@ -135,7 +132,7 @@ public class MainController implements ClientListener {
     }
 
     public void exitApp() {
-        if (session.getActiveRoomId() > 0) {
+        if (ClientSession.getInstance().getActiveRoomId() > 0) {
             int confirm = JOptionPane.showConfirmDialog(frame,
                     "¿Estás seguro de que deseas salir de la sala de reunión y cerrar la aplicación?",
                     "Confirmar salida", JOptionPane.YES_NO_OPTION);
@@ -177,7 +174,7 @@ public class MainController implements ClientListener {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
-        ClientService.getInstance().sendFile(session.getActiveRoomId(), session.getMyUserId(), selectedFile);
+        ClientService.getInstance().sendFile(ClientSession.getInstance().getActiveRoomId(), ClientSession.getInstance().getMyUserId(), selectedFile);
     }
 
     public void respondWaitingRequest(int userId, String action) {
@@ -204,9 +201,9 @@ public class MainController implements ClientListener {
     @Override
     public void onLoginResponse(boolean success, String error, String name, String role, int idUsuario) {
         if (success) {
-            session.setMyUserId(idUsuario);
-            session.setMyName(name);
-            session.setMyRole(role);
+            ClientSession.getInstance().setMyUserId(idUsuario);
+            ClientSession.getInstance().setMyName(name);
+            ClientSession.getInstance().setMyRole(role);
 
             frame.getWelcomePanel().setWelcomeMessage(name, role);
             frame.showCard("WELCOME");
@@ -245,11 +242,11 @@ public class MainController implements ClientListener {
     @Override
     public void onCreateRoomResponse(boolean success, String error, String codigoSala, String nombreSala, int idSala) {
         if (success) {
-            session.setActiveRoomId(idSala);
-            session.setActiveRoomCode(codigoSala);
-            session.setActiveRoomName(nombreSala);
+            ClientSession.getInstance().setActiveRoomId(idSala);
+            ClientSession.getInstance().setActiveRoomCode(codigoSala);
+            ClientSession.getInstance().setActiveRoomName(nombreSala);
 
-            frame.getRoomPanel().setupHostRoom(codigoSala, nombreSala, session);
+            frame.getRoomPanel().setupHostRoom(codigoSala, nombreSala);
             frame.showCard("ROOM");
         } else {
             JOptionPane.showMessageDialog(frame, "No se pudo crear la sala:\n" + error, "Error",
@@ -265,11 +262,11 @@ public class MainController implements ClientListener {
             frame.getWelcomePanel().closeWaitingRoomDialog();
             frame.getWelcomePanel().enableJoinButton();
 
-            session.setActiveRoomId(idSala);
+            ClientSession.getInstance().setActiveRoomId(idSala);
             // El codigo ya fue enviado por el input
-            session.setActiveRoomName(nombreSala);
+            ClientSession.getInstance().setActiveRoomName(nombreSala);
 
-            frame.getRoomPanel().setupParticipantRoom(nombreSala, session);
+            frame.getRoomPanel().setupParticipantRoom(nombreSala);
             frame.showCard("ROOM");
         } else if ("REJECTED".equalsIgnoreCase(status)) {
             frame.getWelcomePanel().closeWaitingRoomDialog();
@@ -291,7 +288,7 @@ public class MainController implements ClientListener {
 
     @Override
     public void onRoomMembersUpdate(List<Usuario> activeUsers) {
-        frame.getRoomPanel().updateRoomMembers(activeUsers, session.getMyUserId());
+        frame.getRoomPanel().updateRoomMembers(activeUsers, ClientSession.getInstance().getMyUserId());
     }
 
     @Override
@@ -323,7 +320,7 @@ public class MainController implements ClientListener {
     public void onRoomTerminated() {
         frame.getWelcomePanel().closeWaitingRoomDialog();
         frame.getRoomPanel().stopCameraLocal();
-        session.clearRoom();
+        ClientSession.getInstance().clearRoom();
 
         frame.getWelcomePanel().enableJoinButton();
 
