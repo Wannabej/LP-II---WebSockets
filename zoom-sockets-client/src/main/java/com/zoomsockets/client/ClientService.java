@@ -16,6 +16,7 @@ public class ClientService {
     private Thread readThread;
     private boolean connected = false;
     private ClientListener listener;
+    private java.util.Map<Integer, String> pendingDownloads = new java.util.concurrent.ConcurrentHashMap<>();
 
     private ClientService() {}
 
@@ -151,8 +152,26 @@ public class ClientService {
                     listener.onFileShared(
                         header.getNombres(),
                         header.getNombreArchivo(),
-                        header.getContenido() // Contiene el nombre único físico guardado en el servidor
+                        header.getContenido(), // Contiene el nombre único físico guardado en el servidor
+                        header.getIdArchivo() != null ? header.getIdArchivo() : 0
                     );
+                    break;
+                case "FILE_DOWNLOAD_RESPONSE":
+                    if (header.getError() != null) {
+                        listener.onFileDownloadFailed(header.getError());
+                    } else {
+                        String dest = pendingDownloads.remove(header.getIdArchivo());
+                        if (dest != null && frame.getBinaryPayload() != null) {
+                            try (FileOutputStream fos = new FileOutputStream(dest)) {
+                                fos.write(frame.getBinaryPayload());
+                                listener.onFileDownloadComplete(dest);
+                            } catch (IOException e) {
+                                listener.onFileDownloadFailed("Error local al guardar: " + e.getMessage());
+                            }
+                        } else if (dest != null) {
+                            listener.onFileDownloadFailed("El servidor no envió datos binarios.");
+                        }
+                    }
                     break;
                 case "CAMERA_FRAME":
                     listener.onCameraFrame(
@@ -211,5 +230,13 @@ public class ClientService {
                 System.err.println("Error al enviar archivo fragmentado: " + e.getMessage());
             }
         }, "FileSenderThread").start();
+    }
+
+    public void requestFileDownload(int idArchivo, String rutaDestinoLocal) {
+        if (!connected) return;
+        pendingDownloads.put(idArchivo, rutaDestinoLocal);
+        ControlHeader req = new ControlHeader("FILE_DOWNLOAD_REQUEST");
+        req.setIdArchivo(idArchivo);
+        sendFrame(new NetworkFrame(req.toJson()));
     }
 }

@@ -114,6 +114,9 @@ public class ClientHandler implements Runnable {
                 case "FILE_END":
                     handleFileEnd();
                     break;
+                case "FILE_DOWNLOAD_REQUEST":
+                    handleFileDownloadRequest(header);
+                    break;
                 case "CAMERA_FRAME":
                     handleCameraFrame(frame);
                     break;
@@ -436,6 +439,7 @@ public class ClientHandler implements Runnable {
                 fileNotification.setNombres(usuario.getNombres());
                 fileNotification.setNombreArchivo(nombreArchivoRecibiendo);
                 fileNotification.setContenido(archivoTemporal.getName()); // Usar el nombre físico único para descargas
+                fileNotification.setIdArchivo(ac.getIdArchivo());
 
                 roomActivo.broadcast(new NetworkFrame(fileNotification.toJson()));
             }
@@ -553,6 +557,33 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) { /* ignored */ }
         
         System.out.println("Recursos de conexión liberados.");
+    }
+
+    private void handleFileDownloadRequest(ControlHeader header) {
+        if (header.getIdArchivo() == null) return;
+        
+        ArchivoCompartido ac = archivoDAO.getArchivoPorId(header.getIdArchivo());
+        ControlHeader res = new ControlHeader("FILE_DOWNLOAD_RESPONSE");
+        res.setIdArchivo(header.getIdArchivo());
+        
+        if (ac != null) {
+            java.io.File file = new java.io.File(ac.getRutaArchivo());
+            if (file.exists()) {
+                try {
+                    byte[] data = java.nio.file.Files.readAllBytes(file.toPath());
+                    res.setNombreArchivo(ac.getNombreArchivo());
+                    sendFrame(new NetworkFrame(res.toJson(), data));
+                    return;
+                } catch (java.io.IOException e) {
+                    res.setError("Error al leer el archivo físico en el servidor.");
+                }
+            } else {
+                res.setError("El archivo no existe físicamente en el servidor.");
+            }
+        } else {
+            res.setError("El archivo no se encontró en la base de datos.");
+        }
+        sendFrame(new NetworkFrame(res.toJson()));
     }
 
     private void handleChangeName(ControlHeader header) {

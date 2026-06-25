@@ -19,8 +19,6 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -47,7 +45,7 @@ public class RoomPanel extends JPanel {
 
     private DefaultListModel<String> modelFilesList;
     private JList<String> listSharedFiles;
-    private Map<String, String> physicalFilesMap = new HashMap<>(); 
+    private Map<String, Integer> idFilesMap = new HashMap<>();
 
     private final Map<Integer, ParticipantVideoPanel> participantPanels = new HashMap<>();
 
@@ -97,7 +95,8 @@ public class RoomPanel extends JPanel {
         JButton btnRename = new JButton("Renombrar");
         btnRename.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         btnRename.addActionListener(e -> {
-            String newName = JOptionPane.showInputDialog(this, "Introduce tu nuevo nombre para esta reunión:", controller.getSession().getMyName());
+            String newName = JOptionPane.showInputDialog(this, "Introduce tu nuevo nombre para esta reunión:",
+                    controller.getSession().getMyName());
             if (newName != null && !newName.trim().isEmpty()) {
                 controller.changeName(newName.trim());
             }
@@ -128,7 +127,7 @@ public class RoomPanel extends JPanel {
         areaChat.setForeground(new Color(220, 220, 220));
         areaChat.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         areaChat.setBorder(new EmptyBorder(5, 5, 5, 5));
-        
+
         JScrollPane scrollChat = new JScrollPane(areaChat);
         panelChatTab.add(scrollChat, BorderLayout.CENTER);
 
@@ -158,13 +157,13 @@ public class RoomPanel extends JPanel {
 
         JPanel panelFilesButtons = new JPanel(new GridLayout(2, 1, 5, 5));
         panelFilesButtons.setBorder(new EmptyBorder(5, 0, 0, 0));
-        
+
         btnShareFile = new JButton("Compartir Documento");
         btnShareFile.setBackground(new Color(46, 139, 87));
         btnShareFile.setForeground(Color.WHITE);
         btnShareFile.putClientProperty("JButton.buttonType", "roundRect");
         btnShareFile.addActionListener(e -> performShareFile());
-        
+
         JButton btnDownloadFile = new JButton("Descargar Archivo Seleccionado");
         btnDownloadFile.putClientProperty("JButton.buttonType", "roundRect");
         btnDownloadFile.addActionListener(e -> performDownloadFile());
@@ -179,7 +178,8 @@ public class RoomPanel extends JPanel {
 
         panelWaitingRoom = new JPanel(new BorderLayout());
         panelWaitingRoom.setPreferredSize(new Dimension(320, 160));
-        panelWaitingRoom.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(65, 68, 75)), "Sala de Espera (Invitados Pendientes)"));
+        panelWaitingRoom.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(65, 68, 75)), "Sala de Espera (Invitados Pendientes)"));
         panelWaitingRoom.setVisible(false);
 
         modelWaitingList = new DefaultListModel<>();
@@ -190,7 +190,7 @@ public class RoomPanel extends JPanel {
 
         JPanel panelWaitingButtons = new JPanel(new GridLayout(1, 2, 5, 5));
         panelWaitingButtons.setBorder(new EmptyBorder(5, 5, 5, 5));
-        
+
         JButton btnAcceptUser = new JButton("Admitir");
         btnAcceptUser.setBackground(new Color(46, 139, 87));
         btnAcceptUser.setForeground(Color.WHITE);
@@ -259,13 +259,14 @@ public class RoomPanel extends JPanel {
         addOrUpdateParticipantVideo(session.getMyUserId(), session.getMyName(), null);
 
         modelFilesList.clear();
-        physicalFilesMap.clear();
+        idFilesMap.clear();
         areaChat.setText("");
     }
 
     private void sendChatMessage() {
         String msg = txtChatMessage.getText().trim();
-        if (msg.isEmpty()) return;
+        if (msg.isEmpty())
+            return;
 
         controller.sendChatMessage(msg);
         txtChatMessage.setText("");
@@ -284,42 +285,28 @@ public class RoomPanel extends JPanel {
     private void performDownloadFile() {
         String selected = listSharedFiles.getSelectedValue();
         if (selected == null) {
-            JOptionPane.showMessageDialog(this, "Por favor, selecciona un archivo de la lista.", "Descarga", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Por favor, selecciona un archivo de la lista.", "Descarga",
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        String physicalName = physicalFilesMap.get(selected);
-        if (physicalName == null) return;
-
-        File serverFile = new File("uploads", physicalName);
-        if (!serverFile.exists()) {
-            JOptionPane.showMessageDialog(this, "El archivo físico no se encuentra en el servidor.", "Error", JOptionPane.ERROR_MESSAGE);
+        Integer fileId = idFilesMap.get(selected);
+        if (fileId == null)
             return;
-        }
 
         JFileChooser fc = new JFileChooser();
         fc.setSelectedFile(new File(selected.split(" - ")[0]));
         int ret = fc.showSaveDialog(this);
         if (ret == JFileChooser.APPROVE_OPTION) {
             File dest = fc.getSelectedFile();
-            try (FileInputStream in = new FileInputStream(serverFile);
-                 FileOutputStream out = new FileOutputStream(dest)) {
-                
-                byte[] buf = new byte[8192];
-                int read;
-                while ((read = in.read(buf)) != -1) {
-                    out.write(buf, 0, read);
-                }
-                JOptionPane.showMessageDialog(this, "Archivo guardado exitosamente en:\n" + dest.getAbsolutePath());
-            } catch (Exception e) {
-                JOptionPane.showMessageDialog(this, "Error al guardar el archivo: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
+            controller.requestFileDownload(fileId, dest.getAbsolutePath());
         }
     }
 
     private void respondWaitingRequest(String action) {
         int selectedIndex = listWaitingUsers.getSelectedIndex();
-        if (selectedIndex == -1) return;
+        if (selectedIndex == -1)
+            return;
 
         String val = listWaitingUsers.getSelectedValue();
         int userId = -1;
@@ -347,8 +334,9 @@ public class RoomPanel extends JPanel {
     }
 
     public void updateRoomMembers(List<Usuario> activeUsers, int myUserId) {
-        if (activeUsers == null) return;
-        
+        if (activeUsers == null)
+            return;
+
         // Actualizar mi propio nombre
         for (Usuario u : activeUsers) {
             if (u.getIdUsuario() == myUserId) {
@@ -364,7 +352,8 @@ public class RoomPanel extends JPanel {
 
         participantPanels.entrySet().removeIf(entry -> {
             int userId = entry.getKey();
-            if (userId == myUserId) return false; 
+            if (userId == myUserId)
+                return false;
 
             boolean stillActive = false;
             for (Usuario u : activeUsers) {
@@ -387,7 +376,8 @@ public class RoomPanel extends JPanel {
             if (u.getIdUsuario() != myUserId) {
                 addOrUpdateParticipantVideo(u.getIdUsuario(), u.getNombres(), null);
                 ParticipantVideoPanel p = participantPanels.get(u.getIdUsuario());
-                if (p != null) p.setUserName(u.getNombres());
+                if (p != null)
+                    p.setUserName(u.getNombres());
             }
         }
     }
@@ -414,12 +404,12 @@ public class RoomPanel extends JPanel {
         areaChat.setCaretPosition(areaChat.getDocument().getLength());
     }
 
-    public void addSharedFile(String senderName, String filename, String physicalName) {
+    public void addSharedFile(String senderName, String filename, int idArchivo) {
         areaChat.append("[SISTEMA]: " + senderName + " ha compartido el archivo '" + filename + "'\n");
-        
+
         String listValue = filename + " - Enviado por " + senderName;
         modelFilesList.addElement(listValue);
-        physicalFilesMap.put(listValue, physicalName);
+        idFilesMap.put(listValue, idArchivo);
     }
 
     public void updateParticipantCamera(int userId, String userName, byte[] imageBytes) {
@@ -429,39 +419,39 @@ public class RoomPanel extends JPanel {
     private void toggleCamera() {
         if (!isCameraOn) {
             int opt = JOptionPane.showConfirmDialog(
-                this,
-                "¿Desea permitir que la aplicación acceda a su cámara local?",
-                "Permiso de Cámara",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-            );
+                    this,
+                    "¿Desea permitir que la aplicación acceda a su cámara local?",
+                    "Permiso de Cámara",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
 
             if (opt == JOptionPane.YES_OPTION) {
                 List<Webcam> webcams = Webcam.getWebcams();
 
                 if (webcams.isEmpty()) {
                     JOptionPane.showMessageDialog(this,
-                        "No se detectó ninguna cámara de hardware.\nSe usará la simulación de video.",
-                        "Sin cámara", JOptionPane.WARNING_MESSAGE);
+                            "No se detectó ninguna cámara de hardware.\nSe usará la simulación de video.",
+                            "Sin cámara", JOptionPane.WARNING_MESSAGE);
                     selectedWebcam = null;
                 } else if (webcams.size() == 1) {
                     selectedWebcam = webcams.get(0);
                 } else {
                     String[] nombres = webcams.stream()
-                        .map(Webcam::getName)
-                        .toArray(String[]::new);
+                            .map(Webcam::getName)
+                            .toArray(String[]::new);
                     String elegida = (String) JOptionPane.showInputDialog(
-                        this,
-                        "Selecciona la cámara a usar:",
-                        "Selección de Cámara",
-                        JOptionPane.QUESTION_MESSAGE,
-                        null,
-                        nombres,
-                        nombres[0]);
-                    if (elegida == null) return; 
+                            this,
+                            "Selecciona la cámara a usar:",
+                            "Selección de Cámara",
+                            JOptionPane.QUESTION_MESSAGE,
+                            null,
+                            nombres,
+                            nombres[0]);
+                    if (elegida == null)
+                        return;
                     selectedWebcam = webcams.stream()
-                        .filter(w -> w.getName().equals(elegida))
-                        .findFirst().orElse(webcams.get(0));
+                            .filter(w -> w.getName().equals(elegida))
+                            .findFirst().orElse(webcams.get(0));
                 }
             } else {
                 selectedWebcam = null;
@@ -512,15 +502,15 @@ public class RoomPanel extends JPanel {
     }
 
     private void runRealCamera() {
-        selectedWebcam.setCustomViewSizes(WebcamResolution.QVGA.getSize()); 
+        selectedWebcam.setCustomViewSizes(WebcamResolution.QVGA.getSize());
         selectedWebcam.setViewSize(WebcamResolution.QVGA.getSize());
 
         ImageWriter jpegWriter = null;
         try {
             if (!selectedWebcam.open()) {
                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this,
-                    "No se pudo abrir la cámara seleccionada.\nVerifica que no esté en uso.",
-                    "Error de Cámara", JOptionPane.ERROR_MESSAGE));
+                        "No se pudo abrir la cámara seleccionada.\nVerifica que no esté en uso.",
+                        "Error de Cámara", JOptionPane.ERROR_MESSAGE));
                 return;
             }
 
@@ -545,12 +535,13 @@ public class RoomPanel extends JPanel {
 
                 SwingUtilities.invokeLater(() -> {
                     ParticipantVideoPanel p = participantPanels.get(controller.getSession().getMyUserId());
-                    if (p != null) p.updateFrame(jpegBytes);
+                    if (p != null)
+                        p.updateFrame(jpegBytes);
                 });
 
                 controller.sendCameraFrame(jpegBytes);
 
-                Thread.sleep(200); 
+                Thread.sleep(200);
             }
         } catch (InterruptedException e) {
             // normal
@@ -571,7 +562,7 @@ public class RoomPanel extends JPanel {
         int height = 240;
         BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2 = img.createGraphics();
-        
+
         int circleX = width / 2;
         int circleY = height / 2;
         int speedX = 4;
@@ -587,13 +578,17 @@ public class RoomPanel extends JPanel {
                 g2.fillRect(0, 0, width, height);
 
                 g2.setColor(new Color(255, 255, 255, 20));
-                for (int i = 0; i < width; i += 40) g2.drawLine(i, 0, i, height);
-                for (int i = 0; i < height; i += 40) g2.drawLine(0, i, width, i);
+                for (int i = 0; i < width; i += 40)
+                    g2.drawLine(i, 0, i, height);
+                for (int i = 0; i < height; i += 40)
+                    g2.drawLine(0, i, width, i);
 
                 circleX += speedX;
                 circleY += speedY;
-                if (circleX - radius < 0 || circleX + radius > width) speedX = -speedX;
-                if (circleY - radius < 0 || circleY + radius > height) speedY = -speedY;
+                if (circleX - radius < 0 || circleX + radius > width)
+                    speedX = -speedX;
+                if (circleY - radius < 0 || circleY + radius > height)
+                    speedY = -speedY;
 
                 g2.setColor(new Color(30, 144, 255, 180));
                 g2.fillOval(circleX - radius, circleY - radius, radius * 2, radius * 2);
@@ -609,7 +604,7 @@ public class RoomPanel extends JPanel {
                 g2.setFont(new Font("Monospaced", Font.BOLD, 12));
                 g2.drawString("LIVE: " + myName.toUpperCase(), 15, 25);
                 g2.drawString("ROL : " + myRole, 15, 42);
-                
+
                 g2.setColor(Color.GREEN);
                 g2.drawString("CAM : ON (320x240 @ 5fps)", 15, 60);
 

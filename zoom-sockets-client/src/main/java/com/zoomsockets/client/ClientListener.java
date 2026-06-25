@@ -19,7 +19,11 @@ public interface ClientListener {
     
     void onChatMessage(String senderName, String content, int senderId);
     
-    void onFileShared(String senderName, String filename, String physicalName);
+    void onFileShared(String senderName, String filename, String physicalName, int idArchivo);
+    
+    void onFileDownloadComplete(String destPath);
+    
+    void onFileDownloadFailed(String error);
     
     void onCameraFrame(int userId, String userName, byte[] imageBytes);
     

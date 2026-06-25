@@ -33,6 +33,7 @@ public class ControlHeader {
 
     // Campos de Archivos
     private String nombreArchivo;
+    private Integer idArchivo;
     private Long tamanoArchivo;
     private Integer chunkIndex;
     private Integer chunkCount;
@@ -41,7 +42,8 @@ public class ControlHeader {
     private List<SolicitudSala> pendingUsers;
     private List<Usuario> activeUsers;
 
-    public ControlHeader() {}
+    public ControlHeader() {
+    }
 
     public ControlHeader(String type) {
         this.type = type;
@@ -175,6 +177,14 @@ public class ControlHeader {
 
     public void setNombreArchivo(String nombreArchivo) {
         this.nombreArchivo = nombreArchivo;
+    }
+
+    public Integer getIdArchivo() {
+        return idArchivo;
+    }
+
+    public void setIdArchivo(Integer idArchivo) {
+        this.idArchivo = idArchivo;
     }
 
     public Long getTamanoArchivo() {
