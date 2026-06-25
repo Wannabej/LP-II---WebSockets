@@ -90,6 +90,15 @@ public class MainController implements ClientListener {
         ClientService.getInstance().sendFrame(new NetworkFrame(joinReq.toJson()));
     }
 
+    public void changeName(String newName) {
+        if (newName == null || newName.trim().isEmpty()) return;
+
+        ControlHeader changeReq = new ControlHeader("CHANGE_NAME_REQUEST");
+        changeReq.setNombres(newName.trim());
+
+        ClientService.getInstance().sendFrame(new NetworkFrame(changeReq.toJson()));
+    }
+
     public void logout() {
         ClientService.getInstance().disconnect();
         session.clearSession();

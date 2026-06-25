@@ -87,10 +87,24 @@ public class RoomPanel extends JPanel {
         panelLeftHeader.add(btnCopyCode);
         panelHeader.add(panelLeftHeader, BorderLayout.WEST);
 
+        JPanel panelRightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        panelRightHeader.setOpaque(false);
         lblMyStatus = new JLabel("Yo: Nombre (Rol)");
         lblMyStatus.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblMyStatus.setForeground(Color.LIGHT_GRAY);
-        panelHeader.add(lblMyStatus, BorderLayout.EAST);
+        panelRightHeader.add(lblMyStatus);
+
+        JButton btnRename = new JButton("Renombrar");
+        btnRename.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        btnRename.addActionListener(e -> {
+            String newName = JOptionPane.showInputDialog(this, "Introduce tu nuevo nombre para esta reunión:", controller.getSession().getMyName());
+            if (newName != null && !newName.trim().isEmpty()) {
+                controller.changeName(newName.trim());
+            }
+        });
+        panelRightHeader.add(btnRename);
+
+        panelHeader.add(panelRightHeader, BorderLayout.EAST);
 
         add(panelHeader, BorderLayout.NORTH);
 
@@ -335,6 +349,19 @@ public class RoomPanel extends JPanel {
     public void updateRoomMembers(List<Usuario> activeUsers, int myUserId) {
         if (activeUsers == null) return;
         
+        // Actualizar mi propio nombre
+        for (Usuario u : activeUsers) {
+            if (u.getIdUsuario() == myUserId) {
+                controller.getSession().setMyName(u.getNombres());
+                lblMyStatus.setText("Yo: " + u.getNombres() + " (" + controller.getSession().getMyRole() + ")");
+                ParticipantVideoPanel p = participantPanels.get(myUserId);
+                if (p != null) {
+                    p.setUserName(u.getNombres());
+                }
+                break;
+            }
+        }
+
         participantPanels.entrySet().removeIf(entry -> {
             int userId = entry.getKey();
             if (userId == myUserId) return false; 
@@ -359,6 +386,8 @@ public class RoomPanel extends JPanel {
         for (Usuario u : activeUsers) {
             if (u.getIdUsuario() != myUserId) {
                 addOrUpdateParticipantVideo(u.getIdUsuario(), u.getNombres(), null);
+                ParticipantVideoPanel p = participantPanels.get(u.getIdUsuario());
+                if (p != null) p.setUserName(u.getNombres());
             }
         }
     }

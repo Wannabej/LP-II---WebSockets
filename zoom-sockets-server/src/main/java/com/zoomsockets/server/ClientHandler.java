@@ -120,6 +120,9 @@ public class ClientHandler implements Runnable {
                 case "LEAVE_ROOM":
                     handleLeaveRoom();
                     break;
+                case "CHANGE_NAME_REQUEST":
+                    handleChangeName(header);
+                    break;
                 default:
                     System.err.println("Tipo de comando desconocido: " + type);
             }
@@ -550,5 +553,15 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) { /* ignored */ }
         
         System.out.println("Recursos de conexión liberados.");
+    }
+
+    private void handleChangeName(ControlHeader header) {
+        if (usuario == null || roomActivo == null) return;
+        String newName = header.getNombres();
+        if (newName != null && !newName.trim().isEmpty()) {
+            usuario.setNombres(newName.trim());
+            broadcastActiveUsersList(roomActivo);
+            System.out.println("El usuario ID " + usuario.getIdUsuario() + " cambió temporalmente su nombre a: " + usuario.getNombres());
+        }
     }
 }

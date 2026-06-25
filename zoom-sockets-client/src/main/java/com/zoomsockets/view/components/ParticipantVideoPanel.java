@@ -10,6 +10,7 @@ public class ParticipantVideoPanel extends JPanel {
     private final JLabel labelName;
     private final JLabel labelVideo;
     private final JPanel panelAvatar;
+    private final JLabel labelAvatarText;
 
     public ParticipantVideoPanel(String userName) {
         this.setLayout(new BorderLayout());
@@ -33,7 +34,7 @@ public class ParticipantVideoPanel extends JPanel {
         if (parts.length > 1 && !parts[1].isEmpty()) initials += parts[1].substring(0, 1).toUpperCase();
         if (initials.isEmpty()) initials = "?";
 
-        JLabel labelAvatarText = new JLabel(initials, JLabel.CENTER);
+        labelAvatarText = new JLabel(initials, JLabel.CENTER);
         labelAvatarText.setFont(new Font("Segoe UI", Font.BOLD, 48));
         labelAvatarText.setForeground(Color.WHITE);
         labelAvatarText.setPreferredSize(new Dimension(100, 100));
@@ -47,6 +48,16 @@ public class ParticipantVideoPanel extends JPanel {
         labelVideo = new JLabel("", JLabel.CENTER);
         labelVideo.setVisible(false);
         this.add(labelVideo, BorderLayout.CENTER);
+    }
+
+    public void setUserName(String newName) {
+        labelName.setText("  " + newName);
+        String initials = "";
+        String[] parts = newName.trim().split(" ");
+        if (parts.length > 0 && !parts[0].isEmpty()) initials += parts[0].substring(0, 1).toUpperCase();
+        if (parts.length > 1 && !parts[1].isEmpty()) initials += parts[1].substring(0, 1).toUpperCase();
+        if (initials.isEmpty()) initials = "?";
+        labelAvatarText.setText(initials);
     }
 
     public void showAvatar() {
