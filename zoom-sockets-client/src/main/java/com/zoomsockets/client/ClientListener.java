@@ -7,6 +7,8 @@ import java.util.List;
 public interface ClientListener {
     void onLoginResponse(boolean success, String error, String name, String role, int idUsuario);
     
+    void onRegisterResponse(boolean success, String error);
+    
     void onCreateRoomResponse(boolean success, String error, String codigoSala, String nombreSala, int idSala);
     
     void onJoinRoomResponse(String status, String error, int idSala, String nombreSala);

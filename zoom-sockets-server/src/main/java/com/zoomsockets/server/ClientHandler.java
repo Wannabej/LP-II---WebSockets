@@ -90,6 +90,9 @@ public class ClientHandler implements Runnable {
                 case "LOGIN_REQUEST":
                     handleLogin(header);
                     break;
+                case "REGISTER_REQUEST":
+                    handleRegister(header);
+                    break;
                 case "CREATE_ROOM":
                     handleCreateRoom(header);
                     break;
@@ -148,6 +151,41 @@ public class ClientHandler implements Runnable {
             response.setStatus("ERROR");
             response.setSuccess(false);
             response.setError("Credenciales incorrectas.");
+        }
+        sendFrame(new NetworkFrame(response.toJson()));
+    }
+
+    private void handleRegister(ControlHeader header) {
+        ControlHeader response = new ControlHeader("REGISTER_RESPONSE");
+        
+        // Verificar si el correo ya existe
+        Usuario existente = usuarioDAO.findUsuarioByCorreo(header.getEmail());
+        if (existente != null) {
+            response.setStatus("ERROR");
+            response.setSuccess(false);
+            response.setError("El correo ya está registrado.");
+        } else {
+            Usuario nuevoUsuario = new Usuario();
+            nuevoUsuario.setNombres(header.getNombres());
+            nuevoUsuario.setCorreo(header.getEmail());
+            // Asegurarse de que el rol sea 'Docente' o 'Estudiante'
+            String rol = header.getRol();
+            if (rol == null || (!rol.equals("Docente") && !rol.equals("Estudiante"))) {
+                rol = "Estudiante"; // Default
+            }
+            nuevoUsuario.setRol(rol);
+            nuevoUsuario.setActivo(true);
+            
+            // registrarUsuario ya se encarga de hashear con BCrypt
+            if (usuarioDAO.registrarUsuario(nuevoUsuario, header.getPassword())) {
+                response.setStatus("SUCCESS");
+                response.setSuccess(true);
+                System.out.println("Nuevo usuario registrado exitosamente: " + nuevoUsuario.getNombres() + " [" + nuevoUsuario.getRol() + "]");
+            } else {
+                response.setStatus("ERROR");
+                response.setSuccess(false);
+                response.setError("Error interno al persistir el usuario.");
+            }
         }
         sendFrame(new NetworkFrame(response.toJson()));
     }

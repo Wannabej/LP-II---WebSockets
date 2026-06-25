@@ -2,6 +2,7 @@ package com.zoomsockets.view;
 
 import com.zoomsockets.controller.MainController;
 import com.zoomsockets.view.panels.LoginPanel;
+import com.zoomsockets.view.panels.RegisterPanel;
 import com.zoomsockets.view.panels.RoomPanel;
 import com.zoomsockets.view.panels.WelcomePanel;
 
@@ -16,6 +17,7 @@ public class ClientAppFrame extends JFrame {
     private final JPanel mainContainer = new JPanel(cardLayout);
 
     private LoginPanel loginPanel;
+    private RegisterPanel registerPanel;
     private WelcomePanel welcomePanel;
     private RoomPanel roomPanel;
 
@@ -41,10 +43,12 @@ public class ClientAppFrame extends JFrame {
         });
 
         loginPanel = new LoginPanel(controller);
+        registerPanel = new RegisterPanel(controller);
         welcomePanel = new WelcomePanel(controller);
         roomPanel = new RoomPanel(controller);
 
         mainContainer.add(loginPanel, "LOGIN");
+        mainContainer.add(registerPanel, "REGISTER");
         mainContainer.add(welcomePanel, "WELCOME");
         mainContainer.add(roomPanel, "ROOM");
 
@@ -66,5 +70,9 @@ public class ClientAppFrame extends JFrame {
 
     public RoomPanel getRoomPanel() {
         return roomPanel;
+    }
+
+    public RegisterPanel getRegisterPanel() {
+        return registerPanel;
     }
 }

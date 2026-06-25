@@ -161,6 +161,17 @@ public class LoginPanel extends JPanel {
         gbc.gridy = 10; gbc.insets = new Insets(4, 8, 0, 8);
         formCard.add(lblHelp, gbc);
 
+        // ── Botón para ir al registro ──
+        JButton btnGoRegister = new JButton("Crear una cuenta nueva");
+        btnGoRegister.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnGoRegister.setForeground(new Color(30, 144, 255));
+        btnGoRegister.setContentAreaFilled(false);
+        btnGoRegister.setBorderPainted(false);
+        btnGoRegister.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnGoRegister.addActionListener(e -> controller.getFrame().showCard("REGISTER"));
+        gbc.gridy = 11; gbc.insets = new Insets(10, 8, 4, 8);
+        formCard.add(btnGoRegister, gbc);
+
         add(formCard);
     }
 

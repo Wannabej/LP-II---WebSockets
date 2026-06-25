@@ -111,6 +111,12 @@ public class ClientService {
                         header.getIdUsuario() != null ? header.getIdUsuario() : 0
                     );
                     break;
+                case "REGISTER_RESPONSE":
+                    listener.onRegisterResponse(
+                        header.getSuccess(),
+                        header.getError()
+                    );
+                    break;
                 case "CREATE_ROOM_RESPONSE":
                     listener.onCreateRoomResponse(
                         header.getSuccess(),

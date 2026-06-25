@@ -32,6 +32,10 @@ public class MainController implements ClientListener {
         return session;
     }
 
+    public ClientAppFrame getFrame() {
+        return frame;
+    }
+
     // ==========================================
     // ACTIONS FROM VIEWS
     // ==========================================
@@ -48,6 +52,25 @@ public class MainController implements ClientListener {
         } catch (IOException e) {
             JOptionPane.showMessageDialog(frame, "No se pudo conectar al servidor de sockets en " + ip + ":" + port + "\nDetalle: " + e.getMessage(), "Error de Conexión", JOptionPane.ERROR_MESSAGE);
             frame.getLoginPanel().enableLoginButton();
+        }
+    }
+
+    public void performRegister(String ip, int port, String nombres, String correo, String password, String rol) {
+        try {
+            ClientService.getInstance().connect(ip, port);
+
+            ControlHeader registerReq = new ControlHeader("REGISTER_REQUEST");
+            registerReq.setNombres(nombres);
+            registerReq.setEmail(correo);
+            registerReq.setPassword(password);
+            registerReq.setRol(rol);
+
+            ClientService.getInstance().sendFrame(new NetworkFrame(registerReq.toJson()));
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(frame, "No se pudo conectar al servidor de sockets en " + ip + ":" + port + "\nDetalle: " + e.getMessage(), "Error de Conexión", JOptionPane.ERROR_MESSAGE);
+            if (frame.getRegisterPanel() != null) {
+                frame.getRegisterPanel().enableRegisterButton();
+            }
         }
     }
 
@@ -165,7 +188,29 @@ public class MainController implements ClientListener {
             frame.showCard("WELCOME");
         } else {
             JOptionPane.showMessageDialog(frame, "Error de autenticación: " + error, "Login fallido", JOptionPane.ERROR_MESSAGE);
+            ClientService.getInstance().disconnect();
             frame.getLoginPanel().enableLoginButton();
+        }
+    }
+
+    @Override
+    public void onRegisterResponse(boolean success, String error) {
+        // Al terminar el registro (sea éxito o error), debemos cerrar la conexión socket temporal
+        // para asegurar un estado limpio en el siguiente login.
+        ClientService.getInstance().disconnect();
+        
+        if (success) {
+            JOptionPane.showMessageDialog(frame, "Cuenta creada exitosamente. Ahora puedes iniciar sesión.", "Registro Exitoso", JOptionPane.INFORMATION_MESSAGE);
+            frame.showCard("LOGIN");
+            if (frame.getRegisterPanel() != null) {
+                frame.getRegisterPanel().enableRegisterButton();
+                frame.getRegisterPanel().clearForm();
+            }
+        } else {
+            JOptionPane.showMessageDialog(frame, "Error en el registro: " + error, "Registro Fallido", JOptionPane.ERROR_MESSAGE);
+            if (frame.getRegisterPanel() != null) {
+                frame.getRegisterPanel().enableRegisterButton();
+            }
         }
     }
 
