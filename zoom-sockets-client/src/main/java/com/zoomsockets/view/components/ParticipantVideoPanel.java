@@ -17,11 +17,18 @@ public class ParticipantVideoPanel extends JPanel {
         this.setBackground(new Color(30, 32, 40));
         this.setBorder(BorderFactory.createLineBorder(new Color(60, 63, 65), 2, true));
 
-        labelName = new JLabel("  " + userName, JLabel.LEFT);
+        labelName = new JLabel("  " + userName, JLabel.LEFT) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                g.setColor(getBackground());
+                g.fillRect(0, 0, getWidth(), getHeight());
+                super.paintComponent(g);
+            }
+        };
         labelName.setFont(new Font("Segoe UI", Font.BOLD, 12));
         labelName.setForeground(Color.WHITE);
         labelName.setPreferredSize(new Dimension(0, 24));
-        labelName.setOpaque(true);
+        labelName.setOpaque(false); // Importante para evitar ghosting con fondos translúcidos
         labelName.setBackground(new Color(0, 0, 0, 150));
         this.add(labelName, BorderLayout.SOUTH);
 
