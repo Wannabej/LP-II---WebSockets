@@ -329,6 +329,18 @@ public class MainController implements ClientListener {
         frame.showCard("WELCOME");
     }
 
+    @Override
+    public void onRoomClosed(String mensaje) {
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(frame, mensaje, "Sala Cerrada", JOptionPane.INFORMATION_MESSAGE);
+            frame.getWelcomePanel().closeWaitingRoomDialog();
+            frame.getRoomPanel().stopCameraLocal();
+            ClientSession.getInstance().clearRoom();
+            frame.getWelcomePanel().enableJoinButton();
+            frame.showCard("WELCOME");
+        });
+    }
+
     public void requestFileDownload(int archivoId, String rutaDestinoLocal) {
         ClientService.getInstance().requestFileDownload(archivoId, rutaDestinoLocal);
     }

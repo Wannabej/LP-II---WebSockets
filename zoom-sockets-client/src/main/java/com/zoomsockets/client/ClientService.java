@@ -183,6 +183,9 @@ public class ClientService {
                 case "ROOM_TERMINATED":
                     listener.onRoomTerminated();
                     break;
+                case "ROOM_CLOSED":
+                    listener.onRoomClosed("El anfitrión ha finalizado la reunión.");
+                    break;
             }
         } catch (Exception e) {
             System.err.println("Error procesando trama en cliente: " + e.getMessage());

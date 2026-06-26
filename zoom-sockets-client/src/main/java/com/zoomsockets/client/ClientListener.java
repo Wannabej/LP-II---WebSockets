@@ -28,4 +28,6 @@ public interface ClientListener {
     void onCameraFrame(int userId, String userName, byte[] imageBytes);
     
     void onRoomTerminated();
+    
+    void onRoomClosed(String mensaje);
 }

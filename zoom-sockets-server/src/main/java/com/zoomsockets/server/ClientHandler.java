@@ -519,13 +519,8 @@ public class ClientHandler implements Runnable {
             if (usuario != null) {
                 // Si la sala queda vacía o el Host se desconecta, desactivamos o notificamos
                 if (salaAfectada.getHostHandler() == this) {
-                    enviarMensajeServidor(salaAfectada, "El host (" + usuario.getNombres() + ") ha finalizado la reunión.");
-                    salaDAO.finalizarSala(salaAfectada.getIdSala());
-                    RoomManager.removerRoom(salaAfectada.getCodigoSala());
-                    
-                    // Notificar a todos para salir de la sala
-                    ControlHeader endRoom = new ControlHeader("ROOM_TERMINATED");
-                    salaAfectada.broadcast(new NetworkFrame(endRoom.toJson()));
+                    // Delegamos a RoomManager
+                    RoomManager.cerrarSala(salaAfectada.getCodigoSala());
                 } else {
                     enviarMensajeServidor(salaAfectada, usuario.getNombres() + " ha abandonado la reunión.");
                     broadcastActiveUsersList(salaAfectada);
