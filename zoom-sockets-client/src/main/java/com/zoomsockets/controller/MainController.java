@@ -5,7 +5,6 @@ import com.zoomsockets.client.ClientService;
 import com.zoomsockets.model.ClientSession;
 import com.zoomsockets.model.SolicitudSala;
 import com.zoomsockets.model.Usuario;
-import com.zoomsockets.protocol.ControlHeader;
 import com.zoomsockets.protocol.NetworkFrame;
 import com.zoomsockets.view.ClientAppFrame;
 
@@ -17,6 +16,7 @@ import java.util.List;
 public class MainController implements ClientListener {
 
     private ClientAppFrame frame;
+
     public MainController() {
         ClientService.getInstance().setListener(this);
     }
@@ -41,11 +41,8 @@ public class MainController implements ClientListener {
         try {
             ClientService.getInstance().connect(ip, port);
 
-            ControlHeader loginReq = new ControlHeader("LOGIN_REQUEST");
-            loginReq.setEmail(correo);
-            loginReq.setPassword(password);
-
-            ClientService.getInstance().sendFrame(new NetworkFrame(loginReq.toJson()));
+            NetworkFrame loginReq = com.zoomsockets.protocol.NetworkFrameFactory.createLoginRequest(correo, password);
+            ClientService.getInstance().sendFrame(loginReq);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(frame,
                     "No se pudo conectar al servidor de sockets en " + ip + ":" + port + "\nDetalle: " + e.getMessage(),
@@ -58,13 +55,9 @@ public class MainController implements ClientListener {
         try {
             ClientService.getInstance().connect(ip, port);
 
-            ControlHeader registerReq = new ControlHeader("REGISTER_REQUEST");
-            registerReq.setNombres(nombres);
-            registerReq.setEmail(correo);
-            registerReq.setPassword(password);
-            registerReq.setRol(rol);
-
-            ClientService.getInstance().sendFrame(new NetworkFrame(registerReq.toJson()));
+            NetworkFrame registerReq = com.zoomsockets.protocol.NetworkFrameFactory.createRegisterRequest(nombres,
+                    correo, password, rol);
+            ClientService.getInstance().sendFrame(registerReq);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(frame,
                     "No se pudo conectar al servidor de sockets en " + ip + ":" + port + "\nDetalle: " + e.getMessage(),
@@ -79,28 +72,24 @@ public class MainController implements ClientListener {
         if (nombre == null || nombre.isEmpty())
             return;
 
-        ControlHeader createReq = new ControlHeader("CREATE_ROOM");
-        createReq.setNombreSala(nombre);
-        ClientService.getInstance().sendFrame(new NetworkFrame(createReq.toJson()));
+        NetworkFrame createReq = com.zoomsockets.protocol.NetworkFrameFactory.createRoomRequest(nombre);
+        ClientService.getInstance().sendFrame(createReq);
     }
 
     public void joinRoom(String codigo) {
         if (codigo == null || codigo.isEmpty())
             return;
 
-        ControlHeader joinReq = new ControlHeader("JOIN_ROOM_REQUEST");
-        joinReq.setCodigoSala(codigo);
-        ClientService.getInstance().sendFrame(new NetworkFrame(joinReq.toJson()));
+        NetworkFrame joinReq = com.zoomsockets.protocol.NetworkFrameFactory.createJoinRoomRequest(codigo);
+        ClientService.getInstance().sendFrame(joinReq);
     }
 
     public void changeName(String newName) {
         if (newName == null || newName.trim().isEmpty())
             return;
 
-        ControlHeader changeReq = new ControlHeader("CHANGE_NAME_REQUEST");
-        changeReq.setNombres(newName.trim());
-
-        ClientService.getInstance().sendFrame(new NetworkFrame(changeReq.toJson()));
+        NetworkFrame changeReq = com.zoomsockets.protocol.NetworkFrameFactory.createChangeNameRequest(newName.trim());
+        ClientService.getInstance().sendFrame(changeReq);
     }
 
     public void logout() {
@@ -116,8 +105,8 @@ public class MainController implements ClientListener {
                     "¿Estás seguro de que deseas salir de la sala de reunión?",
                     "Confirmar salida", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                ControlHeader leaveHeader = new ControlHeader("LEAVE_ROOM");
-                ClientService.getInstance().sendFrame(new NetworkFrame(leaveHeader.toJson()));
+                NetworkFrame leaveHeader = com.zoomsockets.protocol.NetworkFrameFactory.createLeaveRoomRequest();
+                ClientService.getInstance().sendFrame(leaveHeader);
                 try {
                     Thread.sleep(200);
                 } catch (InterruptedException ex) {
@@ -137,8 +126,8 @@ public class MainController implements ClientListener {
                     "¿Estás seguro de que deseas salir de la sala de reunión y cerrar la aplicación?",
                     "Confirmar salida", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                ControlHeader leaveHeader = new ControlHeader("LEAVE_ROOM");
-                ClientService.getInstance().sendFrame(new NetworkFrame(leaveHeader.toJson()));
+                NetworkFrame leaveHeader = com.zoomsockets.protocol.NetworkFrameFactory.createLeaveRoomRequest();
+                ClientService.getInstance().sendFrame(leaveHeader);
                 try {
                     Thread.sleep(200);
                 } catch (InterruptedException ex) {
@@ -153,8 +142,8 @@ public class MainController implements ClientListener {
     }
 
     public void cancelWaitingRoom() {
-        ControlHeader leaveHeader = new ControlHeader("LEAVE_ROOM");
-        ClientService.getInstance().sendFrame(new NetworkFrame(leaveHeader.toJson()));
+        NetworkFrame leaveHeader = com.zoomsockets.protocol.NetworkFrameFactory.createLeaveRoomRequest();
+        ClientService.getInstance().sendFrame(leaveHeader);
         frame.getWelcomePanel().enableJoinButton();
     }
 
@@ -162,10 +151,8 @@ public class MainController implements ClientListener {
         if (msg == null || msg.isEmpty())
             return;
 
-        ControlHeader chat = new ControlHeader("CHAT_MESSAGE");
-        chat.setContenido(msg);
-
-        ClientService.getInstance().sendFrame(new NetworkFrame(chat.toJson()));
+        NetworkFrame chat = com.zoomsockets.protocol.NetworkFrameFactory.createChatMessage(msg);
+        ClientService.getInstance().sendFrame(chat);
     }
 
     public void shareFile(File selectedFile) {
@@ -174,24 +161,23 @@ public class MainController implements ClientListener {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
-        ClientService.getInstance().sendFile(ClientSession.getInstance().getActiveRoomId(), ClientSession.getInstance().getMyUserId(), selectedFile);
+        ClientService.getInstance().sendFile(ClientSession.getInstance().getActiveRoomId(),
+                ClientSession.getInstance().getMyUserId(), selectedFile);
     }
 
     public void respondWaitingRequest(int userId, String action) {
-        ControlHeader admit = new ControlHeader("ADMIT_USER");
-        admit.setIdUsuario(userId);
-        admit.setAction(action);
-        ClientService.getInstance().sendFrame(new NetworkFrame(admit.toJson()));
+        NetworkFrame admit = com.zoomsockets.protocol.NetworkFrameFactory.createAdmitUserRequest(userId, action);
+        ClientService.getInstance().sendFrame(admit);
     }
 
     public void sendCameraFrame(byte[] jpegBytes) {
-        ControlHeader frameHeader = new ControlHeader("CAMERA_FRAME");
-        ClientService.getInstance().sendFrame(new NetworkFrame(frameHeader.toJson(), jpegBytes));
+        NetworkFrame frameHeader = com.zoomsockets.protocol.NetworkFrameFactory.createCameraFrame(jpegBytes);
+        ClientService.getInstance().sendFrame(frameHeader);
     }
 
     public void notifyCameraOff() {
-        ControlHeader camHeader = new ControlHeader("CAMERA_FRAME");
-        ClientService.getInstance().sendFrame(new NetworkFrame(camHeader.toJson(), new byte[0]));
+        NetworkFrame camHeader = com.zoomsockets.protocol.NetworkFrameFactory.createCameraFrame(new byte[0]);
+        ClientService.getInstance().sendFrame(camHeader);
     }
 
     // ==========================================

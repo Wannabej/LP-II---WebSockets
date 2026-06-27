@@ -202,12 +202,8 @@ public class ClientService {
                 String fileName = file.getName();
 
                 // 1. Enviar trama FILE_START con metadatos
-                ControlHeader startHeader = new ControlHeader("FILE_START");
-                startHeader.setIdSala(idSala);
-                startHeader.setIdUsuario(idUsuario);
-                startHeader.setNombreArchivo(fileName);
-                startHeader.setTamanoArchivo(fileSize);
-                sendFrame(new NetworkFrame(startHeader.toJson()));
+                NetworkFrame startFrame = com.zoomsockets.protocol.NetworkFrameFactory.createFileStartFrame(idSala, idUsuario, fileName, fileSize);
+                sendFrame(startFrame);
 
                 // 2. Leer archivo y enviar en fragmentos de 8 KB
                 byte[] buffer = new byte[8192];
@@ -217,16 +213,14 @@ public class ClientService {
                         byte[] chunk = new byte[bytesRead];
                         System.arraycopy(buffer, 0, chunk, 0, bytesRead);
 
-                        ControlHeader chunkHeader = new ControlHeader("FILE_CHUNK");
-                        chunkHeader.setChunkIndex(0); // Opcional, para control
-                        
-                        sendFrame(new NetworkFrame(chunkHeader.toJson(), chunk));
+                        NetworkFrame chunkFrame = com.zoomsockets.protocol.NetworkFrameFactory.createFileChunkFrame(chunk);
+                        sendFrame(chunkFrame);
                     }
                 }
 
                 // 3. Enviar trama FILE_END
-                ControlHeader endHeader = new ControlHeader("FILE_END");
-                sendFrame(new NetworkFrame(endHeader.toJson()));
+                NetworkFrame endFrame = com.zoomsockets.protocol.NetworkFrameFactory.createFileEndFrame();
+                sendFrame(endFrame);
                 
                 System.out.println("Archivo enviado completamente por partes: " + fileName);
             } catch (Exception e) {
@@ -238,8 +232,7 @@ public class ClientService {
     public void requestFileDownload(int idArchivo, String rutaDestinoLocal) {
         if (!connected) return;
         pendingDownloads.put(idArchivo, rutaDestinoLocal);
-        ControlHeader req = new ControlHeader("FILE_DOWNLOAD_REQUEST");
-        req.setIdArchivo(idArchivo);
-        sendFrame(new NetworkFrame(req.toJson()));
+        NetworkFrame reqFrame = com.zoomsockets.protocol.NetworkFrameFactory.createFileDownloadRequest(idArchivo);
+        sendFrame(reqFrame);
     }
 }

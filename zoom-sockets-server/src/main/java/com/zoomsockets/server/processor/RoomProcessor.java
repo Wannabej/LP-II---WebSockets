@@ -35,7 +35,7 @@ public class RoomProcessor {
         sala.setNombre(header.getNombreSala());
         sala.setIdHost(usuario.getIdUsuario());
 
-        ControlHeader response = new ControlHeader("CREATE_ROOM_RESPONSE");
+        NetworkFrame frame;
         if (salaDAO.crearSala(sala)) {
             // Guardar host como participante activo en DB
             salaDAO.agregarParticipante(sala.getIdSala(), usuario.getIdUsuario());
@@ -44,18 +44,12 @@ public class RoomProcessor {
             Room room = RoomManager.crearRoom(sala.getIdSala(), codigo, sala.getNombre(), client);
             client.setRoomActivo(room);
             
-            response.setStatus("SUCCESS");
-            response.setSuccess(true);
-            response.setCodigoSala(codigo);
-            response.setIdSala(sala.getIdSala());
-            response.setNombreSala(sala.getNombre());
+            frame = com.zoomsockets.protocol.NetworkFrameFactory.createCreateRoomResponse(true, null, codigo, sala.getIdSala(), sala.getNombre());
             System.out.println("Sala creada en BD y memoria: " + codigo + " por Host: " + usuario.getNombres());
         } else {
-            response.setStatus("ERROR");
-            response.setSuccess(false);
-            response.setError("No se pudo persistir la sala en la base de datos.");
+            frame = com.zoomsockets.protocol.NetworkFrameFactory.createCreateRoomResponse(false, "No se pudo persistir la sala en la base de datos.", null, 0, null);
         }
-        client.sendFrame(new NetworkFrame(response.toJson()));
+        client.sendFrame(frame);
     }
 
     public void handleJoinRoomRequest(ControlHeader header) {
@@ -63,23 +57,19 @@ public class RoomProcessor {
         if (usuario == null) return;
 
         String codigo = header.getCodigoSala();
-        ControlHeader response = new ControlHeader("JOIN_ROOM_RESPONSE");
+        NetworkFrame frame;
         
         Sala sala = salaDAO.findSalaByCodigo(codigo);
         if (sala == null) {
-            response.setStatus("ERROR");
-            response.setSuccess(false);
-            response.setError("La sala no existe o no se encuentra activa.");
-            client.sendFrame(new NetworkFrame(response.toJson()));
+            frame = com.zoomsockets.protocol.NetworkFrameFactory.createJoinRoomResponse("ERROR", false, "La sala no existe o no se encuentra activa.", null, null);
+            client.sendFrame(frame);
             return;
         }
 
         Room roomMemoria = RoomManager.getRoom(codigo);
         if (roomMemoria == null) {
-            response.setStatus("ERROR");
-            response.setSuccess(false);
-            response.setError("La sala no está activa en el servidor de red.");
-            client.sendFrame(new NetworkFrame(response.toJson()));
+            frame = com.zoomsockets.protocol.NetworkFrameFactory.createJoinRoomResponse("ERROR", false, "La sala no está activa en el servidor de red.", null, null);
+            client.sendFrame(frame);
             return;
         }
 
@@ -93,20 +83,15 @@ public class RoomProcessor {
             roomMemoria.agregarASalaDeEspera(client);
             client.setRoomActivo(roomMemoria);
 
-            response.setStatus("PENDING");
-            response.setSuccess(true); // Indica que la solicitud fue procesada y está en cola
-            response.setIdSala(sala.getIdSala());
-            response.setNombreSala(sala.getNombre());
-            client.sendFrame(new NetworkFrame(response.toJson()));
+            frame = com.zoomsockets.protocol.NetworkFrameFactory.createJoinRoomResponse("PENDING", true, null, sala.getIdSala(), sala.getNombre());
+            client.sendFrame(frame);
 
             // Notificar al Host de la sala en tiempo real con la lista actualizada
             notificarHostDeEspera(roomMemoria);
             System.out.println("Usuario " + usuario.getNombres() + " solicita unirse a " + codigo + " (En Sala de Espera)");
         } else {
-            response.setStatus("ERROR");
-            response.setSuccess(false);
-            response.setError("Error al registrar la solicitud de acceso.");
-            client.sendFrame(new NetworkFrame(response.toJson()));
+            frame = com.zoomsockets.protocol.NetworkFrameFactory.createJoinRoomResponse("ERROR", false, "Error al registrar la solicitud de acceso.", null, null);
+            client.sendFrame(frame);
         }
     }
 
@@ -150,12 +135,8 @@ public class RoomProcessor {
             roomActivo.admitirParticipante(invitadoHandler);
 
             // Notificar al invitado que ha sido admitido
-            ControlHeader joinResponse = new ControlHeader("JOIN_ROOM_RESPONSE");
-            joinResponse.setStatus("SUCCESS");
-            joinResponse.setSuccess(true);
-            joinResponse.setIdSala(roomActivo.getIdSala());
-            joinResponse.setNombreSala(roomActivo.getNombre());
-            invitadoHandler.sendFrame(new NetworkFrame(joinResponse.toJson()));
+            NetworkFrame joinResponse = com.zoomsockets.protocol.NetworkFrameFactory.createJoinRoomResponse("SUCCESS", true, null, roomActivo.getIdSala(), roomActivo.getNombre());
+            invitadoHandler.sendFrame(joinResponse);
 
             // Enviar notificación a todos sobre el nuevo participante
             broadcastActiveUsersList(roomActivo);
@@ -170,11 +151,8 @@ public class RoomProcessor {
             roomActivo.removerDeSalaDeEspera(invitadoHandler);
 
             // Notificar al invitado del rechazo
-            ControlHeader joinResponse = new ControlHeader("JOIN_ROOM_RESPONSE");
-            joinResponse.setStatus("REJECTED");
-            joinResponse.setSuccess(false);
-            joinResponse.setError("El host ha rechazado tu solicitud de ingreso.");
-            invitadoHandler.sendFrame(new NetworkFrame(joinResponse.toJson()));
+            NetworkFrame joinResponse = com.zoomsockets.protocol.NetworkFrameFactory.createJoinRoomResponse("REJECTED", false, "El host ha rechazado tu solicitud de ingreso.", null, null);
+            invitadoHandler.sendFrame(joinResponse);
             System.out.println("Host rechazó a usuario id: " + idInvitado);
         }
 
@@ -206,18 +184,15 @@ public class RoomProcessor {
         ClientHandler host = room.getHostHandler();
         if (host != null && host.isRunning()) {
             List<SolicitudSala> pendientes = solicitudDAO.getPendientesPorSala(room.getIdSala());
-            
-            ControlHeader update = new ControlHeader("WAITING_ROOM_UPDATE");
-            update.setPendingUsers(pendientes);
-            host.sendFrame(new NetworkFrame(update.toJson()));
+            NetworkFrame update = com.zoomsockets.protocol.NetworkFrameFactory.createWaitingRoomUpdate(pendientes);
+            host.sendFrame(update);
         }
     }
 
     public void broadcastActiveUsersList(Room room) {
         List<Usuario> activos = room.getActiveUsersList();
-        ControlHeader update = new ControlHeader("ROOM_MEMBERS_UPDATE");
-        update.setActiveUsers(activos);
-        room.broadcast(new NetworkFrame(update.toJson()));
+        NetworkFrame update = com.zoomsockets.protocol.NetworkFrameFactory.createRoomMembersUpdate(activos);
+        room.broadcast(update);
     }
 
     public void handleDisconnect() {

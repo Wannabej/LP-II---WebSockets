@@ -88,15 +88,8 @@ public class FileProcessor {
                 ac.setNombreUsuario(usuario.getNombres());
 
                 // Notificar al canal sobre el nuevo archivo disponible
-                ControlHeader fileNotification = new ControlHeader("FILE_SHARED");
-                fileNotification.setIdSala(roomActivo.getIdSala());
-                fileNotification.setIdUsuario(usuario.getIdUsuario());
-                fileNotification.setNombres(usuario.getNombres());
-                fileNotification.setNombreArchivo(nombreArchivoRecibiendo);
-                fileNotification.setContenido(archivoTemporal.getName()); // Usar el nombre físico único para descargas
-                fileNotification.setIdArchivo(ac.getIdArchivo());
-
-                roomActivo.broadcast(new NetworkFrame(fileNotification.toJson()));
+                NetworkFrame fileNotification = com.zoomsockets.protocol.NetworkFrameFactory.createFileSharedNotification(roomActivo.getIdSala(), usuario.getIdUsuario(), usuario.getNombres(), nombreArchivoRecibiendo, archivoTemporal.getName(), ac.getIdArchivo());
+                roomActivo.broadcast(fileNotification);
             }
         } catch (IOException e) {
             System.err.println("Error al finalizar guardado de archivo: " + e.getMessage());
@@ -111,27 +104,26 @@ public class FileProcessor {
         if (header.getIdArchivo() == null) return;
         
         ArchivoCompartido ac = archivoDAO.getArchivoPorId(header.getIdArchivo());
-        ControlHeader res = new ControlHeader("FILE_DOWNLOAD_RESPONSE");
-        res.setIdArchivo(header.getIdArchivo());
+        NetworkFrame frame;
         
         if (ac != null) {
             File file = new File(ac.getRutaArchivo());
             if (file.exists()) {
                 try {
                     byte[] data = Files.readAllBytes(file.toPath());
-                    res.setNombreArchivo(ac.getNombreArchivo());
-                    client.sendFrame(new NetworkFrame(res.toJson(), data));
+                    frame = com.zoomsockets.protocol.NetworkFrameFactory.createFileDownloadResponse(header.getIdArchivo(), ac.getNombreArchivo(), data, null);
+                    client.sendFrame(frame);
                     return;
                 } catch (IOException e) {
-                    res.setError("Error al leer el archivo físico en el servidor.");
+                    frame = com.zoomsockets.protocol.NetworkFrameFactory.createFileDownloadResponse(header.getIdArchivo(), null, null, "Error al leer el archivo físico en el servidor.");
                 }
             } else {
-                res.setError("El archivo no existe físicamente en el servidor.");
+                frame = com.zoomsockets.protocol.NetworkFrameFactory.createFileDownloadResponse(header.getIdArchivo(), null, null, "El archivo no existe físicamente en el servidor.");
             }
         } else {
-            res.setError("El archivo no se encontró en la base de datos.");
+            frame = com.zoomsockets.protocol.NetworkFrameFactory.createFileDownloadResponse(header.getIdArchivo(), null, null, "El archivo no se encontró en la base de datos.");
         }
-        client.sendFrame(new NetworkFrame(res.toJson()));
+        client.sendFrame(frame);
     }
 
     public void cleanup() {

@@ -15,40 +15,30 @@ public class AuthProcessor {
     }
 
     public void handleLogin(ControlHeader header) {
-        ControlHeader response = new ControlHeader("LOGIN_RESPONSE");
         Usuario user = usuarioDAO.findUsuarioByCorreo(header.getEmail());
+        NetworkFrame frame;
         
         if (user != null && usuarioDAO.verificarPassword(header.getPassword(), user.getPasswordHash())) {
             if (user.isActivo()) {
                 client.setUsuario(user);
-                response.setStatus("SUCCESS");
-                response.setSuccess(true);
-                response.setIdUsuario(user.getIdUsuario());
-                response.setNombres(user.getNombres());
-                response.setRol(user.getRol());
+                frame = com.zoomsockets.protocol.NetworkFrameFactory.createLoginResponse(true, null, user);
                 System.out.println("Autenticación exitosa: " + user.getNombres() + " [" + user.getRol() + "]");
             } else {
-                response.setStatus("ERROR");
-                response.setSuccess(false);
-                response.setError("El usuario está inactivo.");
+                frame = com.zoomsockets.protocol.NetworkFrameFactory.createLoginResponse(false, "El usuario está inactivo.", null);
             }
         } else {
-            response.setStatus("ERROR");
-            response.setSuccess(false);
-            response.setError("Credenciales incorrectas.");
+            frame = com.zoomsockets.protocol.NetworkFrameFactory.createLoginResponse(false, "Credenciales incorrectas.", null);
         }
-        client.sendFrame(new NetworkFrame(response.toJson()));
+        client.sendFrame(frame);
     }
 
     public void handleRegister(ControlHeader header) {
-        ControlHeader response = new ControlHeader("REGISTER_RESPONSE");
+        NetworkFrame frame;
         
         // Verificar si el correo ya existe
         Usuario existente = usuarioDAO.findUsuarioByCorreo(header.getEmail());
         if (existente != null) {
-            response.setStatus("ERROR");
-            response.setSuccess(false);
-            response.setError("El correo ya está registrado.");
+            frame = com.zoomsockets.protocol.NetworkFrameFactory.createRegisterResponse(false, "El correo ya está registrado.");
         } else {
             Usuario nuevoUsuario = new Usuario();
             nuevoUsuario.setNombres(header.getNombres());
@@ -63,15 +53,12 @@ public class AuthProcessor {
             
             // registrarUsuario ya se encarga de hashear con BCrypt
             if (usuarioDAO.registrarUsuario(nuevoUsuario, header.getPassword())) {
-                response.setStatus("SUCCESS");
-                response.setSuccess(true);
+                frame = com.zoomsockets.protocol.NetworkFrameFactory.createRegisterResponse(true, null);
                 System.out.println("Nuevo usuario registrado exitosamente: " + nuevoUsuario.getNombres() + " [" + nuevoUsuario.getRol() + "]");
             } else {
-                response.setStatus("ERROR");
-                response.setSuccess(false);
-                response.setError("Error interno al persistir el usuario.");
+                frame = com.zoomsockets.protocol.NetworkFrameFactory.createRegisterResponse(false, "Error interno al persistir el usuario.");
             }
         }
-        client.sendFrame(new NetworkFrame(response.toJson()));
+        client.sendFrame(frame);
     }
 }

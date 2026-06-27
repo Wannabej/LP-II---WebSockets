@@ -40,22 +40,13 @@ public class ChatProcessor {
             msg.setNombreUsuario(usuario.getNombres());
             
             // Difundir sincrónicamente a todos los miembros de la sala
-            ControlHeader chatBroadcast = new ControlHeader("CHAT_MESSAGE");
-            chatBroadcast.setIdSala(roomActivo.getIdSala());
-            chatBroadcast.setIdUsuario(usuario.getIdUsuario());
-            chatBroadcast.setNombres(usuario.getNombres());
-            chatBroadcast.setContenido(msg.getContenido());
-            
-            roomActivo.broadcast(new NetworkFrame(chatBroadcast.toJson()));
+            NetworkFrame chatBroadcast = com.zoomsockets.protocol.NetworkFrameFactory.createChatBroadcast(roomActivo.getIdSala(), usuario.getIdUsuario(), usuario.getNombres(), msg.getContenido());
+            roomActivo.broadcast(chatBroadcast);
         }
     }
 
     public static void enviarMensajeServidor(Room room, String contenido) {
-        ControlHeader serverMsg = new ControlHeader("CHAT_MESSAGE");
-        serverMsg.setIdSala(room.getIdSala());
-        serverMsg.setIdUsuario(0); // ID 0 representa al servidor
-        serverMsg.setNombres("SISTEMA");
-        serverMsg.setContenido(contenido);
-        room.broadcast(new NetworkFrame(serverMsg.toJson()));
+        NetworkFrame serverMsg = com.zoomsockets.protocol.NetworkFrameFactory.createChatBroadcast(room.getIdSala(), 0, "SISTEMA", contenido);
+        room.broadcast(serverMsg);
     }
 }

@@ -35,8 +35,7 @@ public class RoomManager {
             Room room = activeRooms.remove(codigoSala.toUpperCase());
             if (room != null) {
                 // Notificar a todos los clientes en la sala
-                com.zoomsockets.protocol.ControlHeader closeHeader = new com.zoomsockets.protocol.ControlHeader("ROOM_CLOSED");
-                com.zoomsockets.protocol.NetworkFrame closeFrame = new com.zoomsockets.protocol.NetworkFrame(closeHeader.toJson());
+                com.zoomsockets.protocol.NetworkFrame closeFrame = com.zoomsockets.protocol.NetworkFrameFactory.createRoomClosedNotification();
                 room.broadcast(closeFrame);
 
                 // Finalizar la sala en la base de datos
