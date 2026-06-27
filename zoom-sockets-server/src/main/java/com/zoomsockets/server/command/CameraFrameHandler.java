@@ -1,20 +1,17 @@
-package com.zoomsockets.server.processor;
+package com.zoomsockets.server.command;
 
 import com.zoomsockets.db.SalaDAO;
-import com.zoomsockets.server.Room;
 import com.zoomsockets.model.Usuario;
+import com.zoomsockets.protocol.ControlHeader;
 import com.zoomsockets.protocol.NetworkFrame;
 import com.zoomsockets.server.ClientHandler;
+import com.zoomsockets.server.Room;
 
-public class MediaProcessor {
-    private final ClientHandler client;
+public class CameraFrameHandler implements ServerCommandHandler {
     private final SalaDAO salaDAO = new SalaDAO();
 
-    public MediaProcessor(ClientHandler client) {
-        this.client = client;
-    }
-
-    public void handleCameraFrame(NetworkFrame frame) {
+    @Override
+    public void execute(ControlHeader header, NetworkFrame frame, ClientHandler client) {
         Usuario usuario = client.getUsuario();
         Room roomActivo = client.getRoomActivo();
 
@@ -25,8 +22,7 @@ public class MediaProcessor {
         if (!salaDAO.isParticipanteActivo(roomActivo.getIdSala(), usuario.getIdUsuario()))
             return;
 
-        // Transmisión en tiempo real: Retransmitir inmediatamente a los demás
-        // participantes activos
+        // Transmisión en tiempo real: Retransmitir inmediatamente a los demás participantes activos
         NetworkFrame relayFrame = com.zoomsockets.protocol.NetworkFrameFactory
                 .createCameraFrameRelay(usuario.getIdUsuario(), usuario.getNombres(), frame.getBinaryPayload());
         roomActivo.broadcastExcept(relayFrame, client);
