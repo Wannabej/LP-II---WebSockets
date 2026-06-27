@@ -107,10 +107,6 @@ public class MainController implements ClientListener {
             if (confirm == JOptionPane.YES_OPTION) {
                 NetworkFrame leaveHeader = com.zoomsockets.protocol.NetworkFrameFactory.createLeaveRoomRequest();
                 ClientService.getInstance().sendFrame(leaveHeader);
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException ex) {
-                }
 
                 // Do not disconnect entirely, just go back to Welcome
                 ClientSession.getInstance().clearRoom();
@@ -128,10 +124,7 @@ public class MainController implements ClientListener {
             if (confirm == JOptionPane.YES_OPTION) {
                 NetworkFrame leaveHeader = com.zoomsockets.protocol.NetworkFrameFactory.createLeaveRoomRequest();
                 ClientService.getInstance().sendFrame(leaveHeader);
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException ex) {
-                }
+                
                 ClientService.getInstance().disconnect();
                 System.exit(0);
             }

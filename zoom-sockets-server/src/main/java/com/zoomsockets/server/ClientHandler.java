@@ -96,7 +96,7 @@ public class ClientHandler implements Runnable {
         } catch (EOFException e) {
             System.out.println("Cliente desconectado de forma limpia: "
                     + (usuario != null ? usuario.getNombres() : socket.getRemoteSocketAddress()));
-        } catch (Exception e) {
+        } catch (IOException e) {
             System.err.println("Error en lectura de red del cliente ("
                     + (usuario != null ? usuario.getNombres() : "desconocido") + "): " + e.getMessage());
         } finally {

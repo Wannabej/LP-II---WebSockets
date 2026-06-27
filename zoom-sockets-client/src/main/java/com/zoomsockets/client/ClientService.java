@@ -171,8 +171,8 @@ public class ClientService {
                 sendFrame(endFrame);
                 
                 System.out.println("Archivo enviado completamente por partes: " + fileName);
-            } catch (Exception e) {
-                System.err.println("Error al enviar archivo fragmentado: " + e.getMessage());
+            } catch (IOException e) {
+                System.err.println("Error de I/O al enviar archivo fragmentado: " + e.getMessage());
             }
         }, "FileSenderThread").start();
     }
