@@ -4,6 +4,16 @@ import com.zoomsockets.model.SolicitudSala;
 import com.zoomsockets.model.Usuario;
 import java.util.List;
 
+/**
+ * PATRÓN OBSERVER: 
+ * Esta interfaz actúa como el "Observer" (Observador) dentro del patrón de diseño Observer.
+ * Define el contrato o los métodos que deben ser implementados por aquellos componentes 
+ * (como el MainController, que sería el "Concrete Observer") que desean ser notificados 
+ * sobre eventos de red asíncronos que recibe el "Subject" (en este caso, ClientService).
+ * 
+ * Cuando ClientService (Subject) recibe un evento del servidor, itera/llama a la 
+ * implementación de ClientListener registrada, notificándole los cambios de estado.
+ */
 public interface ClientListener {
     void onLoginResponse(boolean success, String error, String name, String role, int idUsuario);
     

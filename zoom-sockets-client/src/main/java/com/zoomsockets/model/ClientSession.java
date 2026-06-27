@@ -14,6 +14,14 @@ public class ClientSession {
         // Constructor privado para Singleton
     }
 
+    /**
+     * PATRÓN SINGLETON:
+     * Este método estático garantiza que exista una única instancia global de ClientSession
+     * durante todo el ciclo de vida de la aplicación.
+     * Si la variable estática 'instance' es nula, se crea por primera y única vez.
+     * De lo contrario, se devuelve la instancia existente.
+     * Se usa "synchronized" para prevenir problemas si varios hilos intentan obtenerla al mismo tiempo.
+     */
     public static synchronized ClientSession getInstance() {
         if (instance == null) {
             instance = new ClientSession();
