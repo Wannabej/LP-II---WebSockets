@@ -3,9 +3,13 @@ package com.zoomsockets.client;
 import com.zoomsockets.protocol.ControlHeader;
 import com.zoomsockets.protocol.NetworkFrame;
 import com.zoomsockets.protocol.ProtocolStreamer;
+import com.zoomsockets.client.command.*;
 import javax.swing.SwingUtilities;
 import java.io.*;
 import java.net.Socket;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientService {
     private static ClientService instance;
@@ -16,9 +20,31 @@ public class ClientService {
     private Thread readThread;
     private boolean connected = false;
     private ClientListener listener;
-    private java.util.Map<Integer, String> pendingDownloads = new java.util.concurrent.ConcurrentHashMap<>();
+    private Map<Integer, String> pendingDownloads = new ConcurrentHashMap<>();
+    
+    /**
+     * PATRÓN COMMAND (Comando):
+     * Aquí se aplica el patrón Command (o Strategy) para encapsular la lógica de 
+     * procesamiento de cada tipo de mensaje (trama) de red.
+     * En lugar de tener un switch-case gigante, delegamos la acción a objetos 
+     * que implementan la interfaz ClientCommandHandler.
+     */
+    private final Map<String, ClientCommandHandler> commandMap = new HashMap<>();
 
-    private ClientService() {}
+    private ClientService() {
+        commandMap.put("LOGIN_RESPONSE", new LoginResponseHandler());
+        commandMap.put("REGISTER_RESPONSE", new RegisterResponseHandler());
+        commandMap.put("CREATE_ROOM_RESPONSE", new CreateRoomResponseHandler());
+        commandMap.put("JOIN_ROOM_RESPONSE", new JoinRoomResponseHandler());
+        commandMap.put("WAITING_ROOM_UPDATE", new WaitingRoomUpdateHandler());
+        commandMap.put("ROOM_MEMBERS_UPDATE", new RoomMembersUpdateHandler());
+        commandMap.put("CHAT_MESSAGE", new ChatMessageHandler());
+        commandMap.put("FILE_SHARED", new FileSharedHandler());
+        commandMap.put("FILE_DOWNLOAD_RESPONSE", new FileDownloadResponseHandler(pendingDownloads));
+        commandMap.put("CAMERA_FRAME", new CameraFrameHandler());
+        commandMap.put("ROOM_TERMINATED", new RoomTerminatedHandler());
+        commandMap.put("ROOM_CLOSED", new RoomClosedHandler());
+    }
 
     public static synchronized ClientService getInstance() {
         if (instance == null) {
@@ -102,90 +128,11 @@ public class ClientService {
             String type = header.getType();
             if (type == null) return;
 
-            switch (type) {
-                case "LOGIN_RESPONSE":
-                    listener.onLoginResponse(
-                        header.getSuccess(),
-                        header.getError(),
-                        header.getNombres(),
-                        header.getRol(),
-                        header.getIdUsuario() != null ? header.getIdUsuario() : 0
-                    );
-                    break;
-                case "REGISTER_RESPONSE":
-                    listener.onRegisterResponse(
-                        header.getSuccess(),
-                        header.getError()
-                    );
-                    break;
-                case "CREATE_ROOM_RESPONSE":
-                    listener.onCreateRoomResponse(
-                        header.getSuccess(),
-                        header.getError(),
-                        header.getCodigoSala(),
-                        header.getNombreSala(),
-                        header.getIdSala() != null ? header.getIdSala() : 0
-                    );
-                    break;
-                case "JOIN_ROOM_RESPONSE":
-                    listener.onJoinRoomResponse(
-                        header.getStatus(),
-                        header.getError(),
-                        header.getIdSala() != null ? header.getIdSala() : 0,
-                        header.getNombreSala()
-                    );
-                    break;
-                case "WAITING_ROOM_UPDATE":
-                    listener.onWaitingRoomUpdate(header.getPendingUsers());
-                    break;
-                case "ROOM_MEMBERS_UPDATE":
-                    listener.onRoomMembersUpdate(header.getActiveUsers());
-                    break;
-                case "CHAT_MESSAGE":
-                    listener.onChatMessage(
-                        header.getNombres(),
-                        header.getContenido(),
-                        header.getIdUsuario()
-                    );
-                    break;
-                case "FILE_SHARED":
-                    listener.onFileShared(
-                        header.getNombres(),
-                        header.getNombreArchivo(),
-                        header.getContenido(), // Contiene el nombre único físico guardado en el servidor
-                        header.getIdArchivo() != null ? header.getIdArchivo() : 0
-                    );
-                    break;
-                case "FILE_DOWNLOAD_RESPONSE":
-                    if (header.getError() != null) {
-                        listener.onFileDownloadFailed(header.getError());
-                    } else {
-                        String dest = pendingDownloads.remove(header.getIdArchivo());
-                        if (dest != null && frame.getBinaryPayload() != null) {
-                            try (FileOutputStream fos = new FileOutputStream(dest)) {
-                                fos.write(frame.getBinaryPayload());
-                                listener.onFileDownloadComplete(dest);
-                            } catch (IOException e) {
-                                listener.onFileDownloadFailed("Error local al guardar: " + e.getMessage());
-                            }
-                        } else if (dest != null) {
-                            listener.onFileDownloadFailed("El servidor no envió datos binarios.");
-                        }
-                    }
-                    break;
-                case "CAMERA_FRAME":
-                    listener.onCameraFrame(
-                        header.getIdUsuario(),
-                        header.getNombres(),
-                        frame.getBinaryPayload()
-                    );
-                    break;
-                case "ROOM_TERMINATED":
-                    listener.onRoomTerminated();
-                    break;
-                case "ROOM_CLOSED":
-                    listener.onRoomClosed("El anfitrión ha finalizado la reunión.");
-                    break;
+            ClientCommandHandler handler = commandMap.get(type);
+            if (handler != null) {
+                handler.execute(header, frame, listener);
+            } else {
+                System.err.println("Comando no reconocido: " + type);
             }
         } catch (Exception e) {
             System.err.println("Error procesando trama en cliente: " + e.getMessage());
