@@ -4,6 +4,7 @@ import com.zoomsockets.model.Usuario;
 import com.zoomsockets.protocol.ControlHeader;
 import com.zoomsockets.protocol.NetworkFrame;
 import com.zoomsockets.protocol.ProtocolStreamer;
+import com.zoomsockets.protocol.CommandType;
 import com.zoomsockets.server.command.*;
 import com.zoomsockets.db.SalaDAO;
 import com.zoomsockets.db.SolicitudSalaDAO;
@@ -46,19 +47,19 @@ public class ClientHandler implements Runnable {
         }
 
         // Inicializar Comandos
-        commandMap.put("LOGIN_REQUEST", new LoginRequestHandler());
-        commandMap.put("REGISTER_REQUEST", new RegisterRequestHandler());
-        commandMap.put("CREATE_ROOM", new CreateRoomHandler());
-        commandMap.put("JOIN_ROOM_REQUEST", new JoinRoomRequestHandler());
-        commandMap.put("ADMIT_USER", new AdmitUserHandler());
-        commandMap.put("CHAT_MESSAGE", new ChatMessageHandler());
-        commandMap.put("FILE_START", new FileStartHandler(fileContext));
-        commandMap.put("FILE_CHUNK", new FileChunkHandler(fileContext));
-        commandMap.put("FILE_END", new FileEndHandler(fileContext));
-        commandMap.put("FILE_DOWNLOAD_REQUEST", new FileDownloadRequestHandler());
-        commandMap.put("CAMERA_FRAME", new CameraFrameHandler());
-        commandMap.put("LEAVE_ROOM", new LeaveRoomHandler());
-        commandMap.put("CHANGE_NAME_REQUEST", new ChangeNameHandler());
+        commandMap.put(CommandType.LOGIN_REQUEST.name(), new LoginRequestHandler());
+        commandMap.put(CommandType.REGISTER_REQUEST.name(), new RegisterRequestHandler());
+        commandMap.put(CommandType.CREATE_ROOM.name(), new CreateRoomHandler());
+        commandMap.put(CommandType.JOIN_ROOM_REQUEST.name(), new JoinRoomRequestHandler());
+        commandMap.put(CommandType.ADMIT_USER.name(), new AdmitUserHandler());
+        commandMap.put(CommandType.CHAT_MESSAGE.name(), new ChatMessageHandler());
+        commandMap.put(CommandType.FILE_START.name(), new FileStartHandler(fileContext));
+        commandMap.put(CommandType.FILE_CHUNK.name(), new FileChunkHandler(fileContext));
+        commandMap.put(CommandType.FILE_END.name(), new FileEndHandler(fileContext));
+        commandMap.put(CommandType.FILE_DOWNLOAD_REQUEST.name(), new FileDownloadRequestHandler());
+        commandMap.put(CommandType.CAMERA_FRAME.name(), new CameraFrameHandler());
+        commandMap.put(CommandType.LEAVE_ROOM.name(), new LeaveRoomHandler());
+        commandMap.put(CommandType.CHANGE_NAME_REQUEST.name(), new ChangeNameHandler());
     }
 
     public Usuario getUsuario() {

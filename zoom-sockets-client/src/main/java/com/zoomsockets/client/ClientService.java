@@ -3,6 +3,7 @@ package com.zoomsockets.client;
 import com.zoomsockets.protocol.ControlHeader;
 import com.zoomsockets.protocol.NetworkFrame;
 import com.zoomsockets.protocol.ProtocolStreamer;
+import com.zoomsockets.protocol.CommandType;
 import com.zoomsockets.client.command.*;
 import javax.swing.SwingUtilities;
 import java.io.*;
@@ -32,18 +33,18 @@ public class ClientService {
     private final Map<String, ClientCommandHandler> commandMap = new HashMap<>();
 
     private ClientService() {
-        commandMap.put("LOGIN_RESPONSE", new LoginResponseHandler());
-        commandMap.put("REGISTER_RESPONSE", new RegisterResponseHandler());
-        commandMap.put("CREATE_ROOM_RESPONSE", new CreateRoomResponseHandler());
-        commandMap.put("JOIN_ROOM_RESPONSE", new JoinRoomResponseHandler());
-        commandMap.put("WAITING_ROOM_UPDATE", new WaitingRoomUpdateHandler());
-        commandMap.put("ROOM_MEMBERS_UPDATE", new RoomMembersUpdateHandler());
-        commandMap.put("CHAT_MESSAGE", new ChatMessageHandler());
-        commandMap.put("FILE_SHARED", new FileSharedHandler());
-        commandMap.put("FILE_DOWNLOAD_RESPONSE", new FileDownloadResponseHandler(pendingDownloads));
-        commandMap.put("CAMERA_FRAME", new CameraFrameHandler());
-        commandMap.put("ROOM_TERMINATED", new RoomTerminatedHandler());
-        commandMap.put("ROOM_CLOSED", new RoomClosedHandler());
+        commandMap.put(CommandType.LOGIN_RESPONSE.name(), new LoginResponseHandler());
+        commandMap.put(CommandType.REGISTER_RESPONSE.name(), new RegisterResponseHandler());
+        commandMap.put(CommandType.CREATE_ROOM_RESPONSE.name(), new CreateRoomResponseHandler());
+        commandMap.put(CommandType.JOIN_ROOM_RESPONSE.name(), new JoinRoomResponseHandler());
+        commandMap.put(CommandType.WAITING_ROOM_UPDATE.name(), new WaitingRoomUpdateHandler());
+        commandMap.put(CommandType.ROOM_MEMBERS_UPDATE.name(), new RoomMembersUpdateHandler());
+        commandMap.put(CommandType.CHAT_MESSAGE.name(), new ChatMessageHandler());
+        commandMap.put(CommandType.FILE_SHARED.name(), new FileSharedHandler());
+        commandMap.put(CommandType.FILE_DOWNLOAD_RESPONSE.name(), new FileDownloadResponseHandler(pendingDownloads));
+        commandMap.put(CommandType.CAMERA_FRAME.name(), new CameraFrameHandler());
+        commandMap.put(CommandType.ROOM_TERMINATED.name(), new RoomTerminatedHandler());
+        commandMap.put(CommandType.ROOM_CLOSED.name(), new RoomClosedHandler());
     }
 
     public static synchronized ClientService getInstance() {
